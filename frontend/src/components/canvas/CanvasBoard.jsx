@@ -1,8 +1,9 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Stage, Layer, Line } from 'react-konva';
 import { useBoardStore } from '../../state/boardStore';
 import { nanoid } from 'nanoid';
 import { useSocketEvents } from '../../hooks/useSocket';
+import throttle from 'lodash/throttle';
 
 export const CanvasBoard = () => {
     const {
@@ -17,18 +18,23 @@ export const CanvasBoard = () => {
     } = useBoardStore();
 
     const isDrawing = useRef(false);
+    const stageRef = useRef(null);
+    const [currentPoints, setCurrentPoints] = useState([]);
 
-    // Connect socket listeners
+    // Optimistic cursor tracking (throttled)
+    const emitCursorMove = useCallback(throttle((x, y) => {
+        // Future: emit 'cursor-move' via socket
+    }, 50), []);
+
+    // Socket Integration
     useSocketEvents(roomId, {
         onInit: (serverStrokes) => {
-            console.log('Board initialized with', serverStrokes.length, 'strokes');
             setStrokes(serverStrokes);
         },
         onDraw: (stroke) => {
             receiveStroke(stroke);
         },
         onSync: (serverStrokes) => {
-            console.log('Full sync received');
             setStrokes(serverStrokes);
         }
     });
@@ -36,103 +42,62 @@ export const CanvasBoard = () => {
     const handleMouseDown = (e) => {
         isDrawing.current = true;
         const pos = e.target.getStage().getPointerPosition();
-
-        // Create a new stroke locally immediately (for smoothness)
-        // But we won't add it to main "strokes" until mouse up? 
-        // Or we add it as a "currentStroke"?
-        // For simplicity in this iteration: We add to main state but update point by point?
-        // Actually, updating main state 60fps is fine with Konva.
-
-        const newStroke = {
-            id: nanoid(),
-            tool,
-            color,
-            strokeWidth,
-            points: [pos.x, pos.y],
-        };
-
-        addStroke(newStroke);
+        setCurrentPoints([pos.x, pos.y]);
     };
 
     const handleMouseMove = (e) => {
-        // This is tricky with the simple "addStroke" model which pushes a WHOLE stroke.
-        // We need a "current stroke" state that is mutable, then finalized on mouse up.
-        // Implementation Plan:
-        // 1. MouseDown: Start 'currentStroke' in local state.
-        // 2. MouseMove: Append points to 'currentStroke'.
-        // 3. MouseUp: Finalize 'currentStroke', push to store (which emits to socket).
-
-        if (!isDrawing.current) return;
+        // Emit cursor position independent of drawing
         const stage = e.target.getStage();
         const point = stage.getPointerPosition();
+        emitCursorMove(point.x, point.y);
 
-        // For this demo, we will mutate the LAST stroke in the store if it matches our session?
-        // That gets messy reacting to redux/zustand state updates on every pixel.
-
-        // Better: Local state for drawing, only commit to store on MouseUp.
-        // BUT: User wants to see line as they draw.
-
-        // Let's modify the store to support "updateLastStroke"
-        // But wait, "addStroke" in store emits to socket. We don't want to emit every pixel.
-        // So:
-        // 1. MouseDown -> create local `currentLine`.
-        // 2. MouseMove -> update local `currentLine`.
-        // 3. Render `currentLine` on top of `strokes`.
-        // 4. MouseUp -> call `addStroke(currentLine)`.
-
-        setLocalPoints(prev => [...prev, point.x, point.y]);
-    };
-
-    // Local ephemeral state for the line currently being drawn
-    const [localPoints, setLocalPoints] = useState([]);
-    const [isDrawingState, setIsDrawingState] = useState(false);
-
-    const handleStageMouseDown = (e) => {
-        isDrawing.current = true;
-        setIsDrawingState(true);
-        const pos = e.target.getStage().getPointerPosition();
-        setLocalPoints([pos.x, pos.y]);
-    };
-
-    const handleStageMouseMove = (e) => {
         if (!isDrawing.current) return;
-        const stage = e.target.getStage();
-        const point = stage.getPointerPosition();
-        setLocalPoints(prev => [...prev, point.x, point.y]);
+
+        // Append points to local buffer
+        setCurrentPoints(prev => [...prev, point.x, point.y]);
     };
 
-    const handleStageMouseUp = () => {
+    const handleMouseUp = () => {
         if (!isDrawing.current) return;
         isDrawing.current = false;
-        setIsDrawingState(false);
 
-        if (localPoints.length > 0) {
+        if (currentPoints.length > 0) {
             const finalStroke = {
                 id: nanoid(),
                 tool,
                 color,
                 strokeWidth,
-                points: localPoints
+                points: currentPoints
             };
+
+            // Commit to store (and emit to server)
             addStroke(finalStroke);
-            setLocalPoints([]);
+
+            // Clear local buffer
+            setCurrentPoints([]);
         }
     };
 
     return (
         <div className="w-full h-screen bg-gray-50 overflow-hidden">
             <Stage
+                ref={stageRef}
                 width={window.innerWidth}
                 height={window.innerHeight}
-                onMouseDown={handleStageMouseDown}
-                onMouseMove={handleStageMouseMove}
-                onMouseUp={handleStageMouseUp}
-                onTouchStart={handleStageMouseDown}
-                onTouchMove={handleStageMouseMove}
-                onTouchEnd={handleStageMouseUp}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onTouchStart={handleMouseDown}
+                onTouchMove={handleMouseMove}
+                onTouchEnd={handleMouseUp}
             >
+                {/* 
+                  Optimization: Split into two layers.
+                  Layer 1: Committed strokes (Static-ish). React-Konva handles diffing.
+                  Layer 2: Active drawing (Dynamic, frequent updates).
+                */}
                 <Layer>
-                    {/* Render committed strokes */}
                     {strokes.map((stroke, i) => (
                         <Line
                             key={stroke.id || i}
@@ -142,18 +107,27 @@ export const CanvasBoard = () => {
                             tension={0.5}
                             lineCap="round"
                             lineJoin="round"
+                            globalCompositeOperation={
+                                stroke.tool === 'eraser' ? 'destination-out' : 'source-over'
+                            }
                         />
                     ))}
+                </Layer>
 
-                    {/* Render current stroke being drawn */}
-                    {isDrawingState && (
+                <Layer>
+                    {currentPoints.length > 0 && (
                         <Line
-                            points={localPoints}
-                            stroke={color}
+                            points={currentPoints}
+                            stroke={tool === 'eraser' ? '#ffffff' : color} // Eraser preview as white or outline? 
+                            // Actual eraser logic needs destination-out, but that requires being on the same layer to erase.
+                            // For preview, we might just draw white or a specific indicator.
+                            // If we want true erasure during draw, we need to put this Line in the main Layer with composite usage.
+                            // For simplicity in preview: Use color or gray for eraser path.
                             strokeWidth={strokeWidth}
                             tension={0.5}
                             lineCap="round"
                             lineJoin="round"
+                            opacity={tool === 'eraser' ? 0.5 : 1}
                         />
                     )}
                 </Layer>
