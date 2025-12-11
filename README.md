@@ -1,2 +1,11 @@
 # Flowspace
-Flowspace is a realtime collaborative whiteboard enhanced with AI assistance. Teams can sketch ideas, plan systems, and brainstorm together with instant updates, autosaving, and intelligent summaries. Built for fast thinking and seamless collaboration.
+
+Project structure for Flowspace application.
+
+## Frontend
+Located in `frontend/`.
+Run `npm install` and `npm run dev`.
+
+## Backend
+Located in `backend/`.
+Run `npm install` and `npm start`.
