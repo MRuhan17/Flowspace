@@ -39,12 +39,44 @@ flowspace/
 │   └── ...
 ├── backend/            # Express + Socket.IO server
 │   ├── src/
-│   │   ├── ai/         # AI placeholder services (summarize, rewrite, stickyNote)
-│   │   ├── board/      # Board state management & autosave
-│   │   ├── routes/     # API routes
-│   │   └── socket/     # Socket event handlers
+│   │   ├── ai/         # AI services (Summarize, Rewrite, StickyNote + OCR)
+│   │   ├── board/      # Board state Manager (Undo/Redo) & Atomic Autosave
+│   │   ├── config/     # Environment & Config
+│   │   ├── controllers/# API logic
+│   │   ├── routes/     # Express routes
+│   │   └── socket/     # Socket event handlers (Join, Draw, Cursor)
 │   └── ...
 └── snapshots/          # Autosaved board states
 ```
 
+## 🔧 Backend Setup
 
+1. **Install Dependencies**:
+   ```bash
+   cd backend
+   npm install
+   ```
+
+2. **Environment Configuration**:
+   Copy `.env.example` to `.env` and add your API keys.
+   ```bash
+   cp .env.example .env
+   ```
+   *Required Keys*: `OPENAI_API_KEY`, `PORT` (default 3000)
+
+3. **Start Server**:
+   ```bash
+   npm run dev   # Development (Nodemon)
+   npm start     # Production
+   ```
+
+4. **API Endpoints**:
+   - `POST /api/ai/summarize`: Summarize board text.
+   - `POST /api/ai/rewrite`: Rewrite text with tone selection.
+   - `POST /api/ai/sticky-note`: Generate sticky note from text or image (OCR).
+
+5. **Socket Events**:
+   - `join-room`: Join a specific board.
+   - `draw-stroke`: Broadcast drawing actions.
+   - `undo` / `redo`: Manage board history.
+   - `sync-request`: Request full board state.
