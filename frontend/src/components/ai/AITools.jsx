@@ -1,21 +1,43 @@
 import React, { useState } from 'react';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { API_BASE_URL } from '../../utils/constants';
+import { useStore } from '../../state/useStore';
+import { aiService } from '../../api/aiService';
 
 export const AITools = () => {
     const [isLoading, setIsLoading] = useState(false);
+    const { openAIModal, strokes } = useStore();
 
-    // We would access the board store or selection state here to get text to summarize
-    // For now, placeholder for the UI panel.
+    // Helper to extract text from strokes (naive implementation)
+    // In a real app, we'd look for "text" tool strokes or metadata.
+    // For now, we'll send a JSON dump of strokes and let backend heuristic handle it, 
+    // OR just send a test string if empty.
+    const getBoardContext = () => {
+        if (strokes.length === 0) return "No content on board.";
+        // Simplification: We assume backend can parse stroke array or we extract text fields
+        return JSON.stringify(strokes);
+    };
 
     const handleAIAction = async (action) => {
         setIsLoading(true);
+        // clear previous? openAIModal(action, null);
+
         try {
-            // Mock API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            console.log(`AI Action ${action} completed`);
+            let result;
+            const context = getBoardContext();
+
+            if (action === 'summarize') {
+                result = await aiService.summarize({ text: context });
+            } else if (action === 'sticky-note') {
+                // For demo: Generate suggestion based on context
+                // Or prompt user? We'll just generate based on board context.
+                result = await aiService.generateStickyNote({ text: "Generate a sticky note for: " + context.substring(0, 100) });
+            }
+
+            openAIModal(action, result);
         } catch (e) {
             console.error(e);
+            openAIModal(action, { error: "Failed to generate response." });
         } finally {
             setIsLoading(false);
         }
