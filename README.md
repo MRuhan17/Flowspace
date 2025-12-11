@@ -47,40 +47,4 @@ flowspace/
 └── snapshots/          # Autosaved board states
 ```
 
-## ⚡ Getting Started
 
-### Prerequisites
-- Node.js (v16+)
-- npm
-
-### Installation
-
-1.  **Clone the repository**
-    ```bash
-    git clone https://github.com/yourusername/flowspace.git
-    cd flowspace
-    ```
-
-2.  **Setup Backend**
-    ```bash
-    cd backend
-    npm install
-    npm run dev
-    ```
-    The server will start on `http://localhost:3000`.
-
-3.  **Setup Frontend**
-    ```bash
-    cd frontend
-    npm install
-    npm run dev
-    ```
-    The application will run on `http://localhost:5173`.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-This project is licensed under the MIT License.
