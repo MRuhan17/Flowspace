@@ -1,47 +1,11 @@
-import React, { useEffect } from 'react';
 import { CanvasBoard } from './components/canvas/CanvasBoard';
 import { Toolbar } from './components/ui/Toolbar';
 import { AITools } from './components/ai/AITools';
+import { AIPanel } from './components/ai/AIPanel';
 import { useSocketListeners } from './hooks/useSocketListeners';
 import { useStore } from './state/useStore';
 
-// AI Response Modal (Placeholder for visual result display)
-const AIModal = () => {
-    const { aiModal, closeAIModal } = useStore();
-
-    if (!aiModal.isOpen || !aiModal.data) return null;
-
-    return (
-        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-[90%] max-w-lg border border-gray-100 font-sans">
-                <h3 className="text-xl font-bold text-gray-800 mb-4 capitalize flex items-center gap-2">
-                    ✨ AI Result: {aiModal.type}
-                </h3>
-
-                <div className="bg-gray-50 p-4 rounded-lg text-gray-700 whitespace-pre-wrap max-h-[60vh] overflow-y-auto leading-relaxed border border-gray-100">
-                    {/* Handle different data structures */}
-                    {typeof aiModal.data === 'string' ? aiModal.data : JSON.stringify(aiModal.data, null, 2)}
-
-                    {aiModal.data?.summary && <p>{aiModal.data.summary}</p>}
-                    {aiModal.data?.rewritten && <p>{aiModal.data.rewritten}</p>}
-                    {aiModal.data?.content && <div>
-                        <p className="text-sm font-semibold mb-1">Sticky Note Content:</p>
-                        <p className="bg-yellow-100 p-3 rounded shadow-sm inline-block">{aiModal.data.content.text}</p>
-                    </div>}
-                </div>
-
-                <div className="mt-6 flex justify-end">
-                    <button
-                        onClick={closeAIModal}
-                        className="px-5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium shadow-md"
-                    >
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
+// AI Modal logic moved to AIPanel component
 
 function App() {
     // activate global socket listeners (Sync, Draw, etc.)
@@ -77,7 +41,7 @@ function App() {
             <Toolbar />
 
             {/* Overlays */}
-            <AIModal />
+            <AIPanel />
 
         </div>
     );
