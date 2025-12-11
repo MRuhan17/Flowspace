@@ -1,10 +1,13 @@
-// Socket initialization placeholder
-// import { io } from 'socket.io-client';
+import { io } from 'socket.io-client';
 
-// const socket = io('http://localhost:3000');
-const socket = {
-    on: (event, callback) => { console.log(`Listening for ${event}`); },
-    emit: (event, data) => { console.log(`Emitting ${event}`, data); }
-};
+const URL = 'http://localhost:3000'; // Default backend URL
+const socket = io(URL, {
+    autoConnect: false // We can manually connect later or let it connect automatically if removed. Keeping it manageable.
+});
+
+// For debugging purposes
+socket.onAny((event, ...args) => {
+    console.log(event, args);
+});
 
 export default socket;
