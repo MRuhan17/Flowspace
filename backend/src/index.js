@@ -11,46 +11,44 @@ import { setupSocketHandlers } from './socket/socketHandlers.js';
 const app = express();
 const server = http.createServer(app);
 
-// Socket.IO Setup with CORS
+// Socket.IO Configuration
 const io = new Server(server, {
     cors: config.cors
 });
 
-// Global Middleware
+// Middleware
 app.use(cors(config.cors));
 app.use(express.json());
 
-// Request logging
+// Logging Middleware
 app.use((req, res, next) => {
     logger.info(`${req.method} ${req.url}`);
     next();
 });
 
-// Health Check Route
+// Health Check
 app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'ok',
-        timestamp: new Date().toISOString(),
-        service: 'flowspace-backend'
+        service: 'Flowspace Backend',
+        timestamp: new Date().toISOString()
     });
 });
 
-// Mount Routes
+// API Routes
 app.use('/api/ai', aiRoutes);
 
-// Global Error Handler
+// Error Handling
 app.use(errorHandler);
 
-// Initialize Socket Handlers (State management & Rooms)
+// Socket.IO Logic (includes room joining & per-board state)
 setupSocketHandlers(io);
 
 // Start Server
 server.listen(config.port, () => {
-    logger.info(`Flowspace Server is running on port ${config.port}`);
+    logger.info(`Flowspace server running on port ${config.port}`);
 });
 
-// Handle unhandled rejections for robustness
 process.on('unhandledRejection', (err) => {
     logger.error('Unhandled Rejection:', err);
-    // In production, you might want to exit: process.exit(1);
 });
