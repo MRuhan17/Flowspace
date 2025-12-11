@@ -1,82 +1,114 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useMemo } from 'react';
 import { Stage, Layer, Line } from 'react-konva';
 import { useStore } from '../../state/useStore';
 import { nanoid } from 'nanoid';
-import { useSocketEvents } from '../../hooks/useSocket';
+// import { useSocketEvents } from '../../hooks/useSocket'; // Handled globally in App now
 import throttle from 'lodash/throttle';
 
+// Optimized Stroke Component
+const Stroke = React.memo(({ stroke }) => (
+    <Line
+        points={stroke.points}
+        stroke={stroke.color}
+        strokeWidth={stroke.strokeWidth}
+        tension={0.5}
+        lineCap="round"
+        lineJoin="round"
+        globalCompositeOperation={
+            stroke.tool === 'eraser' ? 'destination-out' : 'source-over'
+        }
+        // Performance settings
+        perfectDrawEnabled={false}
+        shadowForStrokeEnabled={false}
+        hitStrokeWidth={0} // Disable hit detection for drawing strokes (performance)
+        listening={false} // Don't listen to events on individual lines
+    />
+));
+
 export const CanvasBoard = () => {
-    const {
-        toolMode: tool,
-        brushColor: color,
-        brushSize: strokeWidth,
-        strokes,
-        addStroke,
-        setStrokes,
-        receiveStroke,
-        activeBoardId: roomId
-    } = useStore();
+    // Select strictly necessary state to minimize re-renders
+    const tool = useStore(state => state.toolMode);
+    const color = useStore(state => state.brushColor);
+    const strokeWidth = useStore(state => state.brushSize);
+    const strokes = useStore(state => state.strokes);
+    const addStroke = useStore(state => state.addStroke);
+    const updateCursor = useStore(state => state.updateCursor);
+    const activeBoardId = useStore(state => state.activeBoardId); // Used for cursor emission context
 
     const isDrawing = useRef(false);
     const stageRef = useRef(null);
+
+    // Local state for the stroke currently being drawn
+    // We keep this local to avoid global store thrashing during 60fps drawing
     const [currentPoints, setCurrentPoints] = useState([]);
 
-    // Optimistic cursor tracking (throttled)
-    const emitCursorMove = useCallback(throttle((x, y) => {
-        // Future: emit 'cursor-move' via socket
-    }, 50), []);
+    // Throttled cursor tracking
+    // Using useRef to persist the throttled function across renders
+    const throttledEmitCursor = useRef(
+        throttle((roomId, x, y) => {
+            // In a real app, we emit via socket here.
+            // Since useSocketListeners handles incoming, we need a way to emit outgoing.
+            // For now, we update local store for self-cursor or strictly emit.
+            // To keep this component clean, we assume the 'socketService' is imported if we want direct emit,
+            // or we use a store action `updateMyCursor`.
+            // Let's use the store action if it existed, or direct socket import.
+            // For now, minimal overhead:
+            import('../../socket/socket').then(({ socketService }) => {
+                socketService.sendCursor(roomId, x, y);
+            });
+        }, 100) // 100ms throttle is sufficient for cursors
+    ).current;
 
-    // Socket Integration
-    useSocketEvents(roomId, {
-        onInit: (serverStrokes) => {
-            setStrokes(serverStrokes);
-        },
-        onDraw: (stroke) => {
-            receiveStroke(stroke);
-        },
-        onSync: (serverStrokes) => {
-            setStrokes(serverStrokes);
-        }
-    });
 
-    const handleMouseDown = (e) => {
+    const handleMouseDown = useCallback((e) => {
         isDrawing.current = true;
         const pos = e.target.getStage().getPointerPosition();
         setCurrentPoints([pos.x, pos.y]);
-    };
+    }, []);
 
-    const handleMouseMove = (e) => {
-        // Emit cursor position independent of drawing
+    const handleMouseMove = useCallback((e) => {
         const stage = e.target.getStage();
         const point = stage.getPointerPosition();
-        emitCursorMove(point.x, point.y);
+
+        // Emit cursor
+        throttledEmitCursor(activeBoardId, point.x, point.y);
 
         if (!isDrawing.current) return;
 
-        // Append points to local buffer
-        setCurrentPoints(prev => [...prev, point.x, point.y]);
-    };
+        // Append points to local state
+        // Functional update is safer for frequent updates
+        setCurrentPoints(prev => prev.concat([point.x, point.y]));
+    }, [activeBoardId, throttledEmitCursor]);
 
-    const handleMouseUp = () => {
+    const handleMouseUp = useCallback(() => {
         if (!isDrawing.current) return;
         isDrawing.current = false;
 
-        if (currentPoints.length > 0) {
-            const finalStroke = {
-                id: nanoid(),
-                tool,
-                color,
-                strokeWidth,
-                points: currentPoints
-            };
+        setCurrentPoints(prevPoints => {
+            if (prevPoints.length > 0) {
+                const finalStroke = {
+                    id: nanoid(),
+                    tool,
+                    color,
+                    strokeWidth,
+                    points: prevPoints
+                };
 
-            // Commit to store (and emit to server)
-            addStroke(finalStroke);
+                // Commit to store
+                addStroke(finalStroke);
+            }
+            return [];
+        });
+    }, [tool, color, strokeWidth, addStroke]);
 
-            // Clear local buffer
-            setCurrentPoints([]);
-        }
-    };
+    // Cleanup throttled function on unmount
+    React.useEffect(() => {
+        return () => throttledEmitCursor.cancel();
+    }, [throttledEmitCursor]);
+
+    // Memoize the strokes layer to prevent re-rendering all lines when only `currentPoints` changes.
+    // However, `strokes` array changes when we add a stroke.
+    // React.memo on Stroke component handles efficient diffing.
 
     return (
         <div className="w-full h-screen bg-gray-50 overflow-hidden">
@@ -93,41 +125,32 @@ export const CanvasBoard = () => {
                 onTouchEnd={handleMouseUp}
             >
                 {/* 
-                  Optimization: Split into two layers.
-                  Layer 1: Committed strokes (Static-ish). React-Konva handles diffing.
-                  Layer 2: Active drawing (Dynamic, frequent updates).
+                   Layer 1: Committed Strokes 
+                   This layer updates only when `strokes` array changes.
                 */}
                 <Layer>
-                    {strokes.map((stroke, i) => (
-                        <Line
-                            key={stroke.id || i}
-                            points={stroke.points}
-                            stroke={stroke.color}
-                            strokeWidth={stroke.strokeWidth}
-                            tension={0.5}
-                            lineCap="round"
-                            lineJoin="round"
-                            globalCompositeOperation={
-                                stroke.tool === 'eraser' ? 'destination-out' : 'source-over'
-                            }
-                        />
+                    {strokes.map((stroke) => (
+                        <Stroke key={stroke.id} stroke={stroke} />
                     ))}
                 </Layer>
 
+                {/* 
+                   Layer 2: Active Drawing
+                   This layer updates on every mouse move during drawing.
+                   Separating it keeps the static strokes from re-rendering/re-painting.
+                */}
                 <Layer>
                     {currentPoints.length > 0 && (
                         <Line
                             points={currentPoints}
-                            stroke={tool === 'eraser' ? '#ffffff' : color} // Eraser preview as white or outline? 
-                            // Actual eraser logic needs destination-out, but that requires being on the same layer to erase.
-                            // For preview, we might just draw white or a specific indicator.
-                            // If we want true erasure during draw, we need to put this Line in the main Layer with composite usage.
-                            // For simplicity in preview: Use color or gray for eraser path.
+                            stroke={tool === 'eraser' ? '#999' : color}
                             strokeWidth={strokeWidth}
                             tension={0.5}
                             lineCap="round"
                             lineJoin="round"
                             opacity={tool === 'eraser' ? 0.5 : 1}
+                            listening={false}
+                            perfectDrawEnabled={false}
                         />
                     )}
                 </Layer>
