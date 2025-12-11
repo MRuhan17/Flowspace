@@ -2,6 +2,7 @@ import { CanvasBoard } from './components/canvas/CanvasBoard';
 import { Toolbar } from './components/ui/Toolbar';
 import { AITools } from './components/ai/AITools';
 import { AIPanel } from './components/ai/AIPanel';
+import { SnapshotLoader } from './components/SnapshotLoader';
 import { CursorGhosts } from './components/CursorGhosts';
 import { useSocketListeners } from './hooks/useSocketListeners';
 import { useStore } from './state/useStore';
@@ -44,6 +45,7 @@ function App() {
 
             {/* Overlays */}
             <AIPanel />
+            <SnapshotLoader />
 
         </div>
     );

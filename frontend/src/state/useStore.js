@@ -11,6 +11,7 @@ export const useStore = create(
             brushColor: '#000000',
             brushSize: 5,
             isDrawing: false,
+            isBoardLoading: true,
 
             strokes: [],
             undoStack: [], // We only track Ids or full snapshots locally? 
@@ -34,6 +35,7 @@ export const useStore = create(
             setBrushColor: (color) => set({ brushColor: color }),
             setBrushSize: (size) => set({ brushSize: size }),
             setIsDrawing: (isDrawing) => set({ isDrawing }),
+            setIsBoardLoading: (isLoading) => set({ isBoardLoading: isLoading }),
 
             setActiveBoardId: (id) => set({ activeBoardId: id }),
 

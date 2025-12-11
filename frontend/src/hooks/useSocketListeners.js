@@ -12,6 +12,7 @@ export const useSocketListeners = () => {
     const receiveStroke = useStore((state) => state.receiveStroke);
     const updateCursor = useStore((state) => state.updateCursor);
     const activeBoardId = useStore((state) => state.activeBoardId);
+    const setIsBoardLoading = useStore((state) => state.setIsBoardLoading);
 
     useEffect(() => {
         // Connect and join room
@@ -21,11 +22,13 @@ export const useSocketListeners = () => {
         const handleInit = (strokes) => {
             console.log(`[Socket] Board Init: ${strokes.length} strokes`);
             setStrokes(strokes);
+            setIsBoardLoading(false);
         };
 
         const handleSync = (strokes) => {
             console.log(`[Socket] Sync received: ${strokes.length} strokes`);
             setStrokes(strokes);
+            setIsBoardLoading(false);
         };
 
         const handleDraw = (stroke) => {
