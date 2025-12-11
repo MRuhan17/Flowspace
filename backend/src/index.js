@@ -6,6 +6,7 @@ import { config } from './config/env.js';
 import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import aiRoutes from './routes/ai.js';
+import layoutRoutes from './routes/layout.js';
 import { setupSocketHandlers } from './socket/socketHandlers.js';
 
 const app = express();
@@ -37,6 +38,7 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/ai', aiRoutes);
+app.use('/api/layout', layoutRoutes);
 
 // Error Handling
 app.use(errorHandler);
