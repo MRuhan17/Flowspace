@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { socket } from '../socket/socketClient';
+import { socketService } from '../socket/socket';
 
 export const useStore = create(
     devtools(
@@ -45,10 +45,7 @@ export const useStore = create(
                 set((state) => ({ strokes: [...state.strokes, stroke] }));
 
                 // Emit
-                socket.emit('draw-stroke', {
-                    roomId: activeBoardId,
-                    stroke
-                });
+                socketService.sendStroke(activeBoardId, stroke);
             },
 
             // Remote Sync
@@ -64,11 +61,11 @@ export const useStore = create(
 
             // History (Server Authoritative)
             undo: () => {
-                socket.emit('undo', { roomId: get().activeBoardId });
+                socketService.sendUndo(get().activeBoardId);
             },
 
             redo: () => {
-                socket.emit('redo', { roomId: get().activeBoardId });
+                socketService.sendRedo(get().activeBoardId);
             },
 
             // Cursors
