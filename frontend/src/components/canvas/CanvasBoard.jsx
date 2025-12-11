@@ -1,21 +1,21 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Stage, Layer, Line } from 'react-konva';
-import { useBoardStore } from '../../state/boardStore';
+import { useStore } from '../../state/useStore';
 import { nanoid } from 'nanoid';
 import { useSocketEvents } from '../../hooks/useSocket';
 import throttle from 'lodash/throttle';
 
 export const CanvasBoard = () => {
     const {
-        tool,
-        color,
-        strokeWidth,
+        toolMode: tool,
+        brushColor: color,
+        brushSize: strokeWidth,
         strokes,
         addStroke,
         setStrokes,
         receiveStroke,
-        roomId
-    } = useBoardStore();
+        activeBoardId: roomId
+    } = useStore();
 
     const isDrawing = useRef(false);
     const stageRef = useRef(null);
