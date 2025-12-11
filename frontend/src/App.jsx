@@ -2,6 +2,7 @@ import { CanvasBoard } from './components/canvas/CanvasBoard';
 import { Toolbar } from './components/ui/Toolbar';
 import { AITools } from './components/ai/AITools';
 import { AIPanel } from './components/ai/AIPanel';
+import { CursorGhosts } from './components/CursorGhosts';
 import { useSocketListeners } from './hooks/useSocketListeners';
 import { useStore } from './state/useStore';
 
@@ -35,6 +36,7 @@ function App() {
             {/* Main Canvas Area */}
             <main className="flex-1 w-full h-full relative overflow-hidden">
                 <CanvasBoard />
+                <CursorGhosts />
             </main>
 
             {/* Floating Toolbar */}
