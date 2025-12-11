@@ -17,11 +17,13 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
+// Mount routes
 app.use('/api/ai', aiRoutes);
 
+// Setup Socket.IO handlers
 setupSocketHandlers(io);
 
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
