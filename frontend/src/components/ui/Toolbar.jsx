@@ -1,22 +1,72 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../../state/useStore'; // Updated from useBoardStore
 import { TOOLS, BOARD_COLORS } from '../../utils/constants';
 import {
     Pencil, Eraser, Undo, Redo,
     MousePointer2, Minus, Maximize,
+    Sparkles, Loader2
 } from 'lucide-react';
 import clsx from 'clsx';
+import { layoutService } from '../../api/layoutService';
 
 export const Toolbar = () => {
     const {
         toolMode: tool, setToolMode,
         brushColor: color, setBrushColor,
         brushSize: strokeWidth, setBrushSize,
-        undo, redo
+        undo, redo,
+        strokes,
+        setStrokes
     } = useStore();
+
+    const [isLayouting, setIsLayouting] = useState(false);
 
     const handleSliderChange = (e) => {
         setBrushSize(Number(e.target.value));
+    };
+
+    const handleAutoLayout = async () => {
+        if (isLayouting || strokes.length === 0) return;
+
+        setIsLayouting(true);
+        try {
+            // Convert strokes to objects for layout
+            // For now, we'll treat each stroke as an object
+            const objects = strokes.map((stroke, index) => ({
+                id: stroke.id || `stroke-${index}`,
+                x: stroke.points[0] || 0,
+                y: stroke.points[1] || 0,
+                width: 100,
+                height: 100,
+                text: `Stroke ${index + 1}`,
+                type: 'stroke'
+            }));
+
+            const layoutedObjects = await layoutService.autoLayout(objects, 'smart');
+
+            // Map back to strokes with new positions
+            const updatedStrokes = strokes.map((stroke, index) => {
+                const layouted = layoutedObjects[index];
+                if (!layouted) return stroke;
+
+                // Offset all points by the difference
+                const deltaX = layouted.x - (stroke.points[0] || 0);
+                const deltaY = layouted.y - (stroke.points[1] || 0);
+
+                return {
+                    ...stroke,
+                    points: stroke.points.map((val, i) =>
+                        i % 2 === 0 ? val + deltaX : val + deltaY
+                    )
+                };
+            });
+
+            setStrokes(updatedStrokes);
+        } catch (error) {
+            console.error('Auto layout failed:', error);
+        } finally {
+            setIsLayouting(false);
+        }
     };
 
     return (
@@ -122,6 +172,33 @@ export const Toolbar = () => {
                         <Redo size={18} strokeWidth={2.5} />
                     </button>
                 </div>
+
+                <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-200 to-transparent"></div>
+
+                {/* Auto Layout */}
+                <button
+                    onClick={handleAutoLayout}
+                    disabled={isLayouting || strokes.length === 0}
+                    className={clsx(
+                        "px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2",
+                        isLayouting || strokes.length === 0
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            : "bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 shadow-md hover:shadow-lg active:scale-95"
+                    )}
+                    title="Auto organize canvas objects"
+                >
+                    {isLayouting ? (
+                        <>
+                            <Loader2 size={16} className="animate-spin" />
+                            <span>Organizing...</span>
+                        </>
+                    ) : (
+                        <>
+                            <Sparkles size={16} />
+                            <span>Auto Layout</span>
+                        </>
+                    )}
+                </button>
             </div>
         </div>
     );
