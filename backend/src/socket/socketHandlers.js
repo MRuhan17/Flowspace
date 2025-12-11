@@ -3,64 +3,83 @@ import { logger } from '../utils/logger.js';
 
 export const setupSocketHandlers = (io) => {
     io.on('connection', (socket) => {
-        logger.info('User connected:', socket.id);
+        logger.info(`Socket connected: ${socket.id}`);
 
+        // Join Room & Init
         socket.on('join-room', async (roomId) => {
-            socket.join(roomId);
-            logger.info(`User ${socket.id} joined room: ${roomId}`);
-
-            // Send current board state to the new user
-            const elements = await boardService.getBoardState(roomId);
-            socket.emit('load-state', elements);
-
-            socket.to(roomId).emit('user-joined', socket.id);
-        });
-
-        socket.on('draw', async (data) => {
-            const { roomId, element } = data;
-            if (!roomId || !element) return;
-
-            await boardService.addOperation(roomId, { element });
-            socket.to(roomId).emit('draw', data.element); // Broadcast just the element
-        });
-
-        // Handle explicit board state updates (e.g. from a full sync or after a complex operation)
-        socket.on('update-board', async (data) => {
-            const { roomId, elements } = data;
             if (!roomId) return;
-            await boardService.updateBoardElements(roomId, elements);
-            socket.to(roomId).emit('update-board', elements);
+
+            await socket.join(roomId);
+            logger.info(`Socket ${socket.id} joined room ${roomId}`);
+
+            // Fetch current board state
+            const strokes = await boardService.getBoardState(roomId);
+
+            // Emit initialization event with current strokes
+            socket.emit('board-init', { strokes });
+
+            // Notify others
+            socket.to(roomId).emit('user-joined', { userId: socket.id });
         });
 
-        socket.on('undo', async (data) => {
-            const { roomId } = data;
+        // Draw Stroke (Idempotent addition/update)
+        socket.on('draw-stroke', async (payload) => {
+            const { roomId, stroke } = payload;
+            if (!roomId || !stroke) return;
+
+            // Update server state
+            // We treat 'stroke' as the element to add/update
+            await boardService.addOperation(roomId, { element: stroke });
+
+            // Broadcast to others (exclude sender)
+            socket.to(roomId).emit('draw-stroke', stroke);
+        });
+
+        // Cursor Move (Ephemeral)
+        socket.on('cursor-move', (payload) => {
+            const { roomId, x, y, userId } = payload;
+            if (!roomId) return;
+
+            // Broadcast cursor position directly
+            socket.to(roomId).emit('cursor-move', { userId: userId || socket.id, x, y });
+        });
+
+        // Undo
+        socket.on('undo', async (payload) => {
+            const { roomId } = payload;
             if (!roomId) return;
 
             const newBoardState = await boardService.undo(roomId);
             if (newBoardState) {
-                io.to(roomId).emit('board-state-sync', newBoardState);
+                // Broadcast FULL sync to ensure consistency after undo
+                io.to(roomId).emit('sync-board', { strokes: newBoardState });
             }
         });
 
-        socket.on('redo', async (data) => {
-            const { roomId } = data;
+        // Redo
+        socket.on('redo', async (payload) => {
+            const { roomId } = payload;
             if (!roomId) return;
 
             const newBoardState = await boardService.redo(roomId);
             if (newBoardState) {
-                io.to(roomId).emit('board-state-sync', newBoardState);
+                // Broadcast FULL sync to ensure consistency after redo
+                io.to(roomId).emit('sync-board', { strokes: newBoardState });
             }
         });
 
-        socket.on('clear', async (data) => {
-            const { roomId } = data;
+        // Full Sync Request (Client asks for latest state)
+        socket.on('sync-request', async (payload) => {
+            const { roomId } = payload;
             if (!roomId) return;
-            await boardService.clearBoard(roomId);
-            io.to(roomId).emit('board-state-sync', []);
+
+            const strokes = await boardService.getBoardState(roomId);
+            socket.emit('sync-board', { strokes });
         });
 
+        // Disconnect
         socket.on('disconnect', () => {
-            logger.info('User disconnected:', socket.id);
+            logger.info(`Socket disconnected: ${socket.id}`);
         });
     });
 };
