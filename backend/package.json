@@ -1,21 +1,35 @@
 {
     "name": "flowspace-backend",
     "version": "1.0.0",
-    "description": "",
+    "description": "Realtime collaborative whiteboard backend with AI features",
     "main": "src/index.js",
     "type": "module",
     "scripts": {
         "start": "node src/index.js",
-        "dev": "nodemon src/index.js"
+        "dev": "nodemon src/index.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
     },
+    "keywords": [
+        "whiteboard",
+        "realtime",
+        "socket.io",
+        "ai",
+        "collaboration"
+    ],
+    "author": "M Ruhan",
+    "license": "ISC",
     "dependencies": {
-        "express": "^4.19.2",
-        "socket.io": "^4.7.5",
         "cors": "^2.8.5",
         "dotenv": "^16.4.5",
-        "openai": "^4.20.1"
+        "express": "^4.19.2",
+        "fs-extra": "^11.2.0",
+        "openai": "^4.28.0",
+        "socket.io": "^4.7.5"
     },
     "devDependencies": {
-        "nodemon": "^3.1.4"
+        "nodemon": "^3.1.0"
+    },
+    "engines": {
+        "node": ">=18.0.0"
     }
 }
