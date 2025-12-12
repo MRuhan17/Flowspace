@@ -9,5 +9,6 @@ const router = express.Router();
 router.post('/summarize', aiController.summarizeText);
 router.post('/rewrite', aiController.rewriteText);
 router.post('/sticky-note', aiController.createStickyNote);
+router.post('/flowchart', aiController.generateFlowchartDiagram);
 
 export default router;

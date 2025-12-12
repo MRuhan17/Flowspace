@@ -1,6 +1,7 @@
 import { summarize } from '../ai/summarize.js';
 import { rewrite } from '../ai/rewrite.js';
 import { generateStickyNote } from '../ai/stickyNote.js';
+import { generateFlowchart } from '../ai/flowchart.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 export const summarizeText = async (req, res, next) => {
@@ -42,6 +43,22 @@ export const createStickyNote = async (req, res, next) => {
         // router.post('/sticky-note', asyncHandler(async (req, res) => { const { prompt } = req.body; ... }));
         // I need to align them. I will update controller to be clean and router to handle properly.
         // Or better: Use the controller logic.
+
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const generateFlowchartDiagram = async (req, res, next) => {
+    try {
+        const { prompt } = req.body;
+        if (!prompt) throw new AppError('Prompt text is required', 400);
+
+        const result = await generateFlowchart(prompt);
 
         res.json({
             success: true,
