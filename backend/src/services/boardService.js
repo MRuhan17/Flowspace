@@ -11,69 +11,77 @@ class BoardService {
         this.MAX_STACK_SIZE = 50;
     }
 
-    addStroke(boardId, stroke) {
-        if (!this.boards.has(boardId)) {
-            // Assuming initBoard would initialize the board structure, including 'strokes'
-            // This method is not defined in the provided context, so this call will fail.
-            // For the purpose of faithfully adding the provided code, it's kept as is.
-            this.initBoard(boardId);
+    /**
+     * Updates multiple elements based on layout/position changes.
+     * @param {string} roomId 
+     * @param {object} updates - Map of { [id]: {x, y} } (deltas)
+     */
+    async updateElements(roomId, updates) {
+        const board = await this._getBoard(roomId);
+
+        // Snapshot for Undo
+        if (board.undoStack.length >= this.MAX_STACK_SIZE) {
+            board.undoStack.shift();
         }
-        const state = this.boards.get(boardId);
-        // The existing board structure uses 'elements', not 'strokes'.
-        // This will likely cause a runtime error if 'state.strokes' is accessed.
-        // For the purpose of faithfully adding the provided code, it's kept as is.
-        state.strokes.push(stroke);
+        board.undoStack.push(JSON.parse(JSON.stringify(board.elements)));
+        board.redoStack = [];
 
-        // Add to persistence queue
-        // this.autosaveService is not defined in the current class.
-        this.autosaveService.markDirty(boardId, state.strokes);
+        // Apply Updates
+        let changed = false;
+        board.elements = board.elements.map(el => {
+            if (updates[el.id]) {
+                changed = true;
+                const { x, y } = updates[el.id];
 
-        // Record for undo
-        // this.boardStateManager is not defined in the current class.
-        this.boardStateManager.addOperation(boardId, { type: 'ADD_STROKE', data: stroke });
-
-        return stroke;
-    }
-
-    updateElements(boardId, updates) {
-        if (!this.boards.has(boardId)) return;
-        const state = this.boards.get(boardId);
-
-        // updates is a map/object: { [id]: {x, y} }
-        const affectedIds = Object.keys(updates);
-
-        if (affectedIds.length === 0) return;
-
-        // Snapshot previous state for undo (simplified: just store the inverse or full snapshot of affected items)
-        // For accurate undo/redo of positions, we'd need to store the PREVIOUS points.
-        // But since we only have simplified Line points usually, getting them back is easy if we store them.
-
-        // Store Undo Operation
-        // We'll store the inverse move: { [id]: { x: -deltaX, y: -deltaY } }
-        const undoMap = {};
-
-        // The existing board structure uses 'elements', not 'strokes'.
-        // This will likely cause a runtime error if 'state.strokes' is accessed.
-        // For the purpose of faithfully adding the provided code, it's kept as is.
-        state.strokes = state.strokes.map(stroke => {
-            if (updates[stroke.id]) {
-                const { x, y } = updates[stroke.id];
-
-                // Store inverse for Undo
-                undoMap[stroke.id] = { x: -x, y: -y };
-
-                return {
-                    ...stroke,
-                    points: stroke.points.map((val, i) => i % 2 === 0 ? val + x : val + y)
-                };
+                // Handle Strokes (Points)
+                if (el.points && Array.isArray(el.points)) {
+                    // Start of stroke is 0,0 usually? If points are relative.
+                    // But here we likely treat points as absolute. 
+                    // Delta X/Y implies shifting all points.
+                    // NOTE: This logic assumes 'x, y' are DELTAS in this context 
+                    // (Toolbar usually logic sends delta or absolute?).
+                    // Let's assume Delta for consistency with previous implementation.
+                    const newPoints = el.points.map((val, i) => i % 2 === 0 ? val + x : val + y);
+                    return { ...el, points: newPoints };
+                }
+                // Handle Nodes (x, y properties)
+                else if (typeof el.x === 'number' && typeof el.y === 'number') {
+                    // For Nodes, 'x' and 'y' in updates might be Absolute or Delta?
+                    // Usually layout updates are Absolute positions or Deltas. 
+                    // If flow engine sends absolute, this should set absolute.
+                    // But previous stroke logic did `val + x`, implying Delta.
+                    // Ref: `CanvasBoard` `handleDragEnd` sends `delta` for strokes.
+                    // For `updateNode` in useFlowEngine, we set `x,y`. 
+                    // Let's assume updates for Nodes are usually ABSOLUTE from flow engine?
+                    // Wait, `socketHandlers` 'layout-update' says "updates: { [id]: { x, y } } - Deltas".
+                    // So we stick to DELTA.
+                    return { ...el, x: el.x + x, y: el.y + y };
+                }
             }
-            return stroke;
+            return el;
         });
 
-        // this.boardStateManager is not defined in the current class.
-        this.boardStateManager.addOperation(boardId, { type: 'LAYOUT_UPDATE', data: undoMap });
-        // this.autosaveService is not defined in the current class.
-        this.autosaveService.markDirty(boardId, state.strokes);
+        if (changed) {
+            persistenceService.saveBoard(roomId, board.elements);
+        }
+
+        return board.elements;
+    }
+
+    async removeElements(roomId, ids) {
+        const board = await this._getBoard(roomId);
+
+        // Snapshot
+        if (board.undoStack.length >= this.MAX_STACK_SIZE) {
+            board.undoStack.shift();
+        }
+        board.undoStack.push(JSON.parse(JSON.stringify(board.elements)));
+        board.redoStack = [];
+
+        board.elements = board.elements.filter(el => !ids.includes(el.id));
+
+        persistenceService.saveBoard(roomId, board.elements);
+        return board.elements;
     }
 
     async _getBoard(roomId) {

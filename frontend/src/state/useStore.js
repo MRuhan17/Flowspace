@@ -17,6 +17,10 @@ export const useStore = create(
             selectedObjectIds: [], // Currently selected element IDs
 
             strokes: [],
+            nodes: [],
+            edges: [],
+            connectionDraft: null,
+
             undoStack: [], // We only track Ids or full snapshots locally? 
             // Note: Our backend handles authoritative undo/redo. 
             // Local stack is nice for optimistic UI, but complex to keep in sync.
@@ -151,29 +155,17 @@ export const useStore = create(
             closeAIModal: () => set({
                 aiModal: { isOpen: false, type: null, data: null }
             }),
-            // --- Node Graph Engine State ---
-            nodes: [], // { id, type, x, y, w, h, data: {}, ports: { in:[], out:[] } }
-            edges: [], // { id, source, sourceHandle, target, targetHandle }
-
-            // Interaction State (Flow)
-            connectionDraft: null, // { sourceId, sourceHandleId, mousePos: {x,y} }
+            // State initialization moved to top or kept here (valid but messy).
+            // Let's remove duplicates.
 
             // Actions
             setNodes: (nodes) => set({ nodes }),
             setEdges: (edges) => set({ edges }),
 
-            addNode: (node) => set(state => ({ nodes: [...state.nodes, node] })),
-
-            updateNode: (id, updates) => set(state => ({
-                nodes: state.nodes.map(n => n.id === id ? { ...n, ...updates } : n)
-            })),
-
             removeNode: (id) => set(state => ({
                 nodes: state.nodes.filter(n => n.id !== id),
                 edges: state.edges.filter(e => e.source !== id && e.target !== id) // Cascade delete edges
             })),
-
-            addEdge: (edge) => set(state => ({ edges: [...state.edges, edge] })),
 
             removeEdge: (id) => set(state => ({
                 edges: state.edges.filter(e => e.id !== id)

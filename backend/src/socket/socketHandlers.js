@@ -35,6 +35,18 @@ export const setupSocketHandlers = (io) => {
             socket.to(roomId).emit('draw-stroke', stroke);
         });
 
+
+
+        // Delete Elements
+        socket.on('delete-elements', async (payload) => {
+            const { roomId, ids } = payload;
+            if (!roomId || !ids || !ids.length) return;
+
+            const newBoardState = await boardService.removeElements(roomId, ids);
+            // Broadcast FULL sync (safest for deletion)
+            io.to(roomId).emit('sync-board', { elements: newBoardState });
+        });
+
         // Cursor Move (Ephemeral)
         socket.on('cursor-move', (payload) => {
             const { roomId, x, y, userId } = payload;
