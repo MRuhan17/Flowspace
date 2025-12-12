@@ -2,7 +2,6 @@ import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import { Stage, Layer, Line } from 'react-konva';
 import { useStore } from '../../state/useStore';
 import { nanoid } from 'nanoid';
-// import { useSocketEvents } from '../../hooks/useSocket'; // Handled globally in App now
 import throttle from 'lodash/throttle';
 import Konva from 'konva';
 import { useSelectionBehavior } from '../../hooks/useSelectionBehavior';
@@ -11,11 +10,12 @@ import { TransformerComponent } from './TransformerComponent';
 import { NodeComponent } from './flow/NodeComponent';
 import { EdgeComponent } from './flow/EdgeComponent';
 import { TOOLS } from '../../utils/constants';
+import { useCRDT, createOperation } from '../../crdt/useCRDT';
 
 // Optimized Stroke Component
 const Stroke = React.memo(({ stroke, isSelected, onDragStart, onDragEnd }) => (
     <Line
-        id={stroke.id} // Important for finding node
+        id={stroke.id}
         points={stroke.points}
         stroke={stroke.color}
         strokeWidth={stroke.strokeWidth}
@@ -25,42 +25,36 @@ const Stroke = React.memo(({ stroke, isSelected, onDragStart, onDragEnd }) => (
         globalCompositeOperation={
             stroke.tool === 'eraser' ? 'destination-out' : 'source-over'
         }
-
-        // Interaction Settings
-        draggable={isSelected} // Only draggable if selected
+        draggable={isSelected && !stroke.locked}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
-
-        // Keep hit detection enabled for selection
-        hitStrokeWidth={20} // Make it easier to select line
-
-        // Performance settings
+        hitStrokeWidth={20}
         perfectDrawEnabled={false}
         shadowForStrokeEnabled={false}
     />
 ));
 
 export const CanvasBoard = () => {
-    // Select strictly necessary state to minimize re-renders
+    // Store state
     const tool = useStore(state => state.toolMode);
     const color = useStore(state => state.brushColor);
     const strokeWidth = useStore(state => state.brushSize);
-    const strokes = useStore(state => state.strokes);
-    const addStroke = useStore(state => state.addStroke);
-    const setStrokes = useStore(state => state.setStrokes);
     const activeBoardId = useStore(state => state.activeBoardId);
-
-    // Selection State
     const selectedObjectIds = useStore(state => state.selectedObjectIds);
     const selectOne = useStore(state => state.selectOne);
-
-    // Animation state from store
     const layoutAnimation = useStore(state => state.layoutAnimation);
     const setLayoutAnimation = useStore(state => state.setLayoutAnimation);
     const setStageRef = useStore(state => state.setStageRef);
 
+    // CRDT Engine
+    const crdt = useCRDT(activeBoardId);
+    const [crdtStrokes, setCrdtStrokes] = useState([]);
+    const [forceUpdate, setForceUpdate] = useState(0);
+
     const isDrawing = useRef(false);
     const stageRef = useRef(null);
+    const layerRef = useRef(null);
+    const [currentPoints, setCurrentPoints] = useState([]);
 
     // Register Stage Ref
     useEffect(() => {
@@ -69,15 +63,31 @@ export const CanvasBoard = () => {
         }
     }, [setStageRef]);
 
-    const layerRef = useRef(null);
+    // Sync CRDT strokes to local state for rendering
+    useEffect(() => {
+        const strokes = crdt.getElementsByType('stroke');
+        setCrdtStrokes(strokes);
+    }, [forceUpdate, crdt]);
 
-    // Local state for the stroke currently being drawn
-    const [currentPoints, setCurrentPoints] = useState([]);
+    // Socket listener for remote CRDT operations
+    useEffect(() => {
+        import('../../socket/socket').then(({ socketService }) => {
+            const handleRemoteCRDTOp = (op) => {
+                crdt.applyRemote(op);
+                setForceUpdate(prev => prev + 1); // Trigger re-render
+            };
+
+            socketService.on('crdt-operation', handleRemoteCRDTOp);
+
+            return () => {
+                socketService.socket?.off('crdt-operation', handleRemoteCRDTOp);
+            };
+        });
+    }, [crdt]);
 
     // Throttled cursor tracking
     const throttledEmitCursor = useRef(
         throttle((roomId, x, y) => {
-            // Lazy load socket service
             import('../../socket/socket').then(({ socketService }) => {
                 socketService.sendCursor(roomId, x, y);
             });
@@ -95,7 +105,6 @@ export const CanvasBoard = () => {
     } = useFlowEngine();
 
     const handleMouseDown = useCallback((e) => {
-        // Handle Selection Logic First if in SELECT mode
         if (tool === TOOLS.SELECT) {
             selectionHandlers.onMouseDown(e);
             return;
@@ -108,16 +117,12 @@ export const CanvasBoard = () => {
 
     const handleMouseMove = useCallback((e) => {
         if (tool === TOOLS.SELECT) {
-            // Check if we are interacting with flow?
-            // If dragging a node, Konva handles it.
-            // If dragging a connection, flowHandlers.onMouseMove handles it?
             if (connectionDraft) {
                 flowHandlers.onMouseMove(e);
                 return;
             }
 
             selectionHandlers.onMouseMove(e);
-            // Also emit cursor
             const stage = e.target.getStage();
             const point = stage.getPointerPosition();
             throttledEmitCursor(activeBoardId, point.x, point.y);
@@ -126,20 +131,17 @@ export const CanvasBoard = () => {
 
         const stage = e.target.getStage();
         const point = stage.getPointerPosition();
-
-        // Emit cursor
         throttledEmitCursor(activeBoardId, point.x, point.y);
 
         if (!isDrawing.current) return;
 
         setCurrentPoints(prev => prev.concat([point.x, point.y]));
-    }, [activeBoardId, throttledEmitCursor, tool, selectionHandlers]);
+    }, [activeBoardId, throttledEmitCursor, tool, selectionHandlers, connectionDraft, flowHandlers]);
 
-    const handleMouseUp = useCallback(() => {
+    const handleMouseUp = useCallback((e) => {
         if (tool === TOOLS.SELECT) {
             if (connectionDraft) {
-                flowHandlers.onMouseUp(e); // Pass Event? E is generic here
-                // flowHandlers might expect event object or rely on stage pointer
+                flowHandlers.onMouseUp(e);
             }
             selectionHandlers.onMouseUp();
             return;
@@ -150,18 +152,31 @@ export const CanvasBoard = () => {
 
         setCurrentPoints(prevPoints => {
             if (prevPoints.length > 0) {
-                const finalStroke = {
-                    id: nanoid(),
+                const strokeId = nanoid();
+                const strokeData = {
+                    type: 'stroke',
                     tool,
                     color,
                     strokeWidth,
                     points: prevPoints
                 };
-                addStroke(finalStroke);
+
+                // Apply CRDT insert operation
+                const op = crdt.applyLocal(createOperation.insert(strokeId, strokeData));
+
+                // Emit to other clients
+                import('../../socket/socket').then(({ socketService }) => {
+                    socketService.socket?.emit('crdt-operation', {
+                        roomId: activeBoardId,
+                        operation: op
+                    });
+                });
+
+                setForceUpdate(prev => prev + 1);
             }
             return [];
         });
-    }, [isDrawing, tool, color, strokeWidth, addStroke, connectionDraft, flowHandlers, selectionHandlers]);
+    }, [tool, color, strokeWidth, crdt, activeBoardId, connectionDraft, flowHandlers, selectionHandlers]);
 
     // Interaction Handlers
     const handleDragStart = useCallback((e) => {
@@ -287,7 +302,7 @@ export const CanvasBoard = () => {
         const combined = [
             ...edges.map(e => ({ ...e, _type: 'edge', _baseZ: 0 })),
             ...nodes.map(n => ({ ...n, _type: 'node', _baseZ: 10 })),
-            ...strokes.map(s => ({ ...s, _type: 'stroke', _baseZ: 20 }))
+            ...crdtStrokes.map(s => ({ ...s, _type: 'stroke', _baseZ: 20 }))
         ];
 
         return combined.sort((a, b) => {
@@ -295,7 +310,7 @@ export const CanvasBoard = () => {
             const zB = b.zIndex !== undefined ? b.zIndex : b._baseZ;
             return zA - zB;
         });
-    }, [edges, nodes, strokes]);
+    }, [edges, nodes, crdtStrokes]);
 
     return (
         <div className="w-full h-screen bg-gray-50 overflow-hidden">
