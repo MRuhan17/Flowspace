@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { exportBoardAsHTML } from './htmlExporter';
 
 /**
  * Downloads a Blob as a file
@@ -16,8 +17,8 @@ const downloadBlob = (blob, fileName) => {
  * Exports Canvas/Board content to various formats
  * @param {object} stageRef - React ref to Konva Stage
  * @param {object} dataStore - { nodes, edges, strokes } source of truth
- * @param {string} mode - 'png' | 'pdf' | 'svg'
- * @param {object} options - { fileName, pixelRatio, backgroundColor }
+ * @param {string} mode - 'png' | 'pdf' | 'svg' | 'html'
+ * @param {object} options - { fileName, pixelRatio, backgroundColor, title, theme }
  */
 export const exportCanvas = async (stageRef, dataStore, mode = 'png', options = {}) => {
     const stage = stageRef.current;
@@ -78,6 +79,14 @@ export const exportCanvas = async (stageRef, dataStore, mode = 'png', options = 
             const svgContent = generateSVG(dataStore, stage.width(), stage.height(), backgroundColor);
             const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
             downloadBlob(blob, `${fileName}.svg`);
+        }
+        else if (mode === 'html') {
+            // Export as interactive HTML
+            exportBoardAsHTML(dataStore, {
+                fileName,
+                title: options.title || 'Flowspace Board Export',
+                theme: options.theme || 'light'
+            });
         }
     } catch (error) {
         console.error("Export failed:", error);
