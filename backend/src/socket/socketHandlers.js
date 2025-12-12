@@ -26,11 +26,24 @@ export const setupSocketHandlers = (io) => {
             }
             roomUsers.get(roomId).add(socket.id);
 
-            // Fetch board state (try CRDT first, fallback to boardService)
+            // Load CRDT state (try snapshot first, then fallback)
             try {
+                // Try loading CRDT snapshot from persistence
+                const snapshot = await boardService.loadCRDTSnapshot(roomId);
+                if (snapshot) {
+                    crdtStateManager.loadSnapshot(roomId, snapshot);
+                    logger.info(`Loaded CRDT snapshot for room ${roomId}`);
+                }
+
+                // Get current CRDT elements
                 const crdtElements = crdtStateManager.getElements(roomId);
+
                 if (crdtElements.length > 0) {
-                    socket.emit('board-init', { elements: crdtElements });
+                    // Send CRDT state
+                    socket.emit('board-init', {
+                        elements: crdtElements,
+                        snapshot: crdtStateManager.dumpSnapshot(roomId)
+                    });
                 } else {
                     // Fallback to traditional board service
                     const elements = await boardService.getBoardState(roomId);
@@ -61,10 +74,34 @@ export const setupSocketHandlers = (io) => {
             socket.emit('presence-roster', { users });
         });
 
-        // CRDT Operation Handler
+        /**
+         * Validate CRDT operation
+         */
+        const validateCRDTOperation = (operation) => {
+            if (!operation) return false;
+            if (!operation.id || !operation.timestamp || !operation.clientId) return false;
+            if (!operation.type || !['insert', 'update', 'delete'].includes(operation.type)) return false;
+            if (!operation.elementId) return false;
+            return true;
+        };
+
+        // CRDT Operation Handler (primary)
         socket.on('crdt-operation', async ({ roomId, operation }) => {
             try {
-                if (!roomId || !operation) return;
+                if (!roomId || !operation) {
+                    logger.warn('Invalid CRDT operation: missing roomId or operation');
+                    return;
+                }
+
+                // Validate operation structure
+                if (!validateCRDTOperation(operation)) {
+                    logger.warn('Invalid CRDT operation structure:', operation);
+                    socket.emit('crdt-error', {
+                        error: 'Invalid operation structure',
+                        operation
+                    });
+                    return;
+                }
 
                 // Apply operation to CRDT state
                 const applied = crdtStateManager.applyOperation(roomId, operation);
@@ -81,10 +118,22 @@ export const setupSocketHandlers = (io) => {
                             logger.error('Failed to save CRDT snapshot:', err);
                         });
                     }
+                } else {
+                    logger.warn('CRDT operation not applied:', operation);
                 }
             } catch (error) {
                 logger.error('Error handling CRDT operation:', error);
+                socket.emit('crdt-error', {
+                    error: error.message,
+                    operation
+                });
             }
+        });
+
+        // CRDT Operation Handler (alias: crdt-op)
+        socket.on('crdt-op', async ({ roomId, operation }) => {
+            // Delegate to main handler
+            socket.emit('crdt-operation', { roomId, operation });
         });
 
         // Draw Stroke (Idempotent addition/update)
