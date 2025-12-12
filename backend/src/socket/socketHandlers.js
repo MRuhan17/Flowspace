@@ -19,7 +19,7 @@ export const setupSocketHandlers = (io) => {
             socket.emit('board-init', { elements });
 
             // Notify others
-            socket.to(roomId).emit('user-joined', { userId: socket.id });
+            socket.to(roomId).emit('presence-join', { userId: socket.id });
         });
 
         // Draw Stroke (Idempotent addition/update)
@@ -121,6 +121,15 @@ export const setupSocketHandlers = (io) => {
         });
 
         // Disconnect
+        socket.on('disconnecting', () => {
+            // socket.rooms is a Set. One of them is the socket ID, others are joined rooms.
+            for (const room of socket.rooms) {
+                if (room !== socket.id) {
+                    socket.to(room).emit('presence-leave', { userId: socket.id });
+                }
+            }
+        });
+
         socket.on('disconnect', () => {
             logger.info(`Socket disconnected: ${socket.id}`);
         });

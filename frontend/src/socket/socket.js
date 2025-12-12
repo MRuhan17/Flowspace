@@ -13,7 +13,9 @@ class FlowspaceSocket {
             onSync: [],
             onCursor: [],
             onUndo: [], // Implicitly handled by sync usually, but good to have
-            onRedo: []
+            onRedo: [],
+            onPresenceJoin: [],
+            onPresenceLeave: []
         };
     }
 
@@ -49,6 +51,10 @@ class FlowspaceSocket {
 
         this.socket.on("sync-board", (data) => this._emit('onSync', data.elements || data.strokes));
         this.socket.on("cursor-move", (data) => this._emit('onCursor', data));
+
+        // Presence
+        this.socket.on("presence-join", (data) => this._emit('onPresenceJoin', data));
+        this.socket.on("presence-leave", (data) => this._emit('onPresenceLeave', data));
     }
 
     joinRoom(roomId) {
