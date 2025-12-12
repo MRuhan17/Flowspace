@@ -6,10 +6,11 @@ import {
     MousePointer2, Minus, Maximize,
     Sparkles, Loader2, Trash2, Group,
     Lock, Unlock, Ungroup, BringToFront, SendToBack,
-    Bot
+    Bot, Download, ChevronUp
 } from 'lucide-react';
 import clsx from 'clsx';
 import { layoutService } from '../../api/layoutService';
+import { exportCanvas } from '../../utils/exporter';
 
 export const Toolbar = () => {
     const {
@@ -22,10 +23,23 @@ export const Toolbar = () => {
         selectedObjectIds,
         toggleLock, updateZIndex, groupElements, updateNode,
         toggleAiAssistant, isAiAssistantOpen,
-        clearSelection
+        clearSelection,
+        stageRef, nodes, edges // Export Data
     } = useStore();
 
     const [isLayouting, setIsLayouting] = useState(false);
+    const [showExport, setShowExport] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExport = async (mode) => {
+        setShowExport(false);
+        setIsExporting(true);
+        // Small delay to allow UI to show spinner if needed or just unblock
+        setTimeout(async () => {
+            await exportCanvas(stageRef, { nodes, edges, strokes }, mode);
+            setIsExporting(false);
+        }, 50);
+    };
 
     const handleSliderChange = (e) => {
         setBrushSize(Number(e.target.value));
@@ -237,6 +251,58 @@ export const Toolbar = () => {
                 >
                     <Bot size={18} strokeWidth={2.5} />
                 </button>
+
+                <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-200 to-transparent"></div>
+
+                {/* Export Dropdown */}
+                <div className="relative">
+                    <button
+                        onClick={() => setShowExport(!showExport)}
+                        disabled={isExporting}
+                        className={clsx(
+                            "p-2.5 rounded-lg transition-all active:scale-95 relative",
+                            isExporting
+                                ? "bg-blue-50 text-blue-600 cursor-wait"
+                                : showExport
+                                    ? "bg-blue-100 text-blue-600"
+                                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                        )}
+                        title="Export Canvas"
+                    >
+                        {isExporting ? (
+                            <Loader2 size={18} strokeWidth={2.5} className="animate-spin" />
+                        ) : (
+                            <Download size={18} strokeWidth={2.5} />
+                        )}
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {showExport && !isExporting && (
+                        <div className="absolute bottom-full mb-2 right-0 bg-white rounded-lg shadow-xl border border-gray-200 py-1 min-w-[120px] z-50 animate-fadeIn">
+                            <button
+                                onClick={() => handleExport('svg')}
+                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
+                            >
+                                <span className="text-xs font-mono bg-gray-100 px-1.5 py-0.5 rounded">SVG</span>
+                                Vector
+                            </button>
+                            <button
+                                onClick={() => handleExport('png')}
+                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
+                            >
+                                <span className="text-xs font-mono bg-gray-100 px-1.5 py-0.5 rounded">PNG</span>
+                                Image
+                            </button>
+                            <button
+                                onClick={() => handleExport('pdf')}
+                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
+                            >
+                                <span className="text-xs font-mono bg-gray-100 px-1.5 py-0.5 rounded">PDF</span>
+                                Document
+                            </button>
+                        </div>
+                    )}
+                </div>
 
                 {selectedObjectIds.length > 0 && (
                     <>

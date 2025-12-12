@@ -15,6 +15,8 @@ export const useStore = create(
             isBoardLoading: true,
             layoutAnimation: null, // Holds { [id]: {x, y} }
             isAiAssistantOpen: false,
+            stageRef: null, // Konva Stage Ref for Export
+
 
             selectedObjectIds: [], // Currently selected element IDs
 
@@ -46,6 +48,7 @@ export const useStore = create(
             setIsBoardLoading: (isLoading) => set({ isBoardLoading: isLoading }),
             setLayoutAnimation: (data) => set({ layoutAnimation: data }),
             toggleAiAssistant: () => set(state => ({ isAiAssistantOpen: !state.isAiAssistantOpen })),
+            setStageRef: (ref) => set({ stageRef: ref }),
 
             // Selection Actions
             selectOne: (id) => set({ selectedObjectIds: [id] }),

@@ -57,9 +57,18 @@ export const CanvasBoard = () => {
     // Animation state from store
     const layoutAnimation = useStore(state => state.layoutAnimation);
     const setLayoutAnimation = useStore(state => state.setLayoutAnimation);
+    const setStageRef = useStore(state => state.setStageRef);
 
     const isDrawing = useRef(false);
     const stageRef = useRef(null);
+
+    // Register Stage Ref
+    useEffect(() => {
+        if (stageRef.current) {
+            setStageRef(stageRef);
+        }
+    }, [setStageRef]);
+
     const layerRef = useRef(null);
 
     // Local state for the stroke currently being drawn
