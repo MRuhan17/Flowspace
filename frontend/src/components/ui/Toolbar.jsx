@@ -4,7 +4,7 @@ import { TOOLS, BOARD_COLORS } from '../../utils/constants';
 import {
     Pencil, Eraser, Undo, Redo,
     MousePointer2, Minus, Maximize,
-    Sparkles, Loader2
+    Sparkles, Loader2, Trash2, Group
 } from 'lucide-react';
 import clsx from 'clsx';
 import { layoutService } from '../../api/layoutService';
@@ -16,7 +16,11 @@ export const Toolbar = () => {
         brushSize: strokeWidth, setBrushSize,
         undo, redo,
         strokes,
-        setStrokes
+        setStrokes,
+        selectedObjectIds,
+        // clearSelection is usually needed after delete, but setStrokes handles ID removal implicitly? 
+        // No, we should explicitly clear selection if IDs are gone to clean state.
+        clearSelection
     } = useStore();
 
     const [isLayouting, setIsLayouting] = useState(false);
@@ -67,6 +71,23 @@ export const Toolbar = () => {
         } finally {
             setIsLayouting(false);
         }
+    };
+
+    const handleDeleteSelected = () => {
+        if (selectedObjectIds.length === 0) return;
+
+        const remaining = strokes.filter(s => !selectedObjectIds.includes(s.id));
+        setStrokes(remaining);
+
+        import('../../socket/socket').then(({ socketService }) => {
+            // Emit deletion event to sync with other users
+            socketService.socket.emit('delete-elements', {
+                roomId: useStore.getState().activeBoardId,
+                ids: selectedObjectIds
+            });
+        });
+
+        clearSelection();
     };
 
     return (
@@ -199,6 +220,28 @@ export const Toolbar = () => {
                         </>
                     )}
                 </button>
+
+                {selectedObjectIds.length > 0 && (
+                    <>
+                        <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-200 to-transparent"></div>
+                        <div className="flex gap-1 animate-fadeIn">
+                            <button
+                                onClick={handleDeleteSelected}
+                                className="p-2.5 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors active:scale-95"
+                                title="Delete Selected (Del)"
+                            >
+                                <Trash2 size={18} strokeWidth={2.5} />
+                            </button>
+                            {/* Grouping placeholder */}
+                            <button
+                                className="p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors active:scale-95"
+                                title="Group Selected (Ctrl+G)"
+                            >
+                                <Group size={18} strokeWidth={2.5} />
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );
