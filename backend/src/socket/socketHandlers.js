@@ -75,10 +75,17 @@ export const setupSocketHandlers = (io) => {
             }
         });
 
-        // Cursor Move (Ephemeral)
+        // Cursor Move (Ephemeral) - Throttled to ~30fps
         socket.on('cursor-move', (payload) => {
             const { roomId, x, y, userId } = payload;
             if (!roomId) return;
+
+            // Throttle: limit broadcast rate to prevent flooding (33ms = ~30fps)
+            const now = Date.now();
+            const last = socket._lastCursorTime || 0;
+            if (now - last < 33) return;
+
+            socket._lastCursorTime = now;
             socket.to(roomId).emit('cursor-move', { userId: userId || socket.id, x, y });
         });
 
