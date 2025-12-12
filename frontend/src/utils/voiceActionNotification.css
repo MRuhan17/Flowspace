@@ -1,0 +1,75 @@
+/* Voice Action Notification Styles */
+
+.voice-action-notification {
+    position: fixed;
+    top: 80px;
+    right: 24px;
+    z-index: 9998;
+    opacity: 0;
+    transform: translateX(400px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.voice-action-notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-left: 4px solid #8b5cf6;
+    min-width: 280px;
+    max-width: 400px;
+}
+
+.notification-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.notification-text {
+    flex: 1;
+    font-size: 14px;
+    color: #374151;
+    line-height: 1.4;
+}
+
+.notification-text strong {
+    color: #8b5cf6;
+    font-weight: 600;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    .notification-content {
+        background: #1f2937;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        border-left-color: #a78bfa;
+    }
+
+    .notification-text {
+        color: #e5e7eb;
+    }
+
+    .notification-text strong {
+        color: #a78bfa;
+    }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .voice-action-notification {
+        right: 16px;
+        left: 16px;
+    }
+
+    .notification-content {
+        min-width: auto;
+    }
+}

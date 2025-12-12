@@ -1,9 +1,11 @@
 import express from 'express';
 import * as aiController from '../controllers/aiController.js';
+import { aiRateLimiter, heavyAiRateLimiter } from '../middleware/rateLimit.js';
 
 const router = express.Router();
 
-// validation/error wrappers could stay here or move to controller validation
+// Apply standard rate limit to all AI routes
+router.use(aiRateLimiter);
 // For consistency with previous refactor where logic moved to controllers:
 
 router.post('/summarize', aiController.summarizeText);
@@ -50,6 +52,10 @@ router.post('/query/suggestions', aiController.getSuggestedQuestions);
 router.post('/suggestions/generate', aiController.getSmartSuggestions);
 router.post('/suggestions/quick', aiController.getQuickSuggestions);
 router.post('/suggestions/high-priority', aiController.getHighPrioritySuggestionsOnly);
+router.post('/from-screenshot', heavyAiRateLimiter, aiController.convertScreenshotToDiagram);
+router.post('/cleanup', heavyAiRateLimiter, aiController.handleCleanupBoard);
+router.post('/presentation', heavyAiRateLimiter, aiController.handleGeneratePresentation);
+router.post('/ux-feedback', heavyAiRateLimiter, aiController.handleUXAnalysis);
 
 export default router;
 

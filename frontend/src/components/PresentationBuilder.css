@@ -1,0 +1,358 @@
+/* Presentation Builder Styles */
+
+.presentation-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    z-index: 10001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.presentation-modal {
+    width: 1000px;
+    height: 700px;
+    max-width: 95vw;
+    max-height: 95vh;
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.close-btn-float {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.05);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.close-btn-float:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Config View */
+.config-view {
+    padding: 60px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.icon-header {
+    margin-bottom: 40px;
+}
+
+.icon-header svg {
+    margin-bottom: 16px;
+    color: #3b82f6;
+}
+
+.icon-header h2 {
+    font-size: 32px;
+    margin: 0 0 8px;
+    color: #111827;
+}
+
+.icon-header p {
+    font-size: 16px;
+    color: #6b7280;
+    margin: 0;
+}
+
+.form-group {
+    margin-bottom: 32px;
+    width: 100%;
+    max-width: 600px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #374151;
+}
+
+.style-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.style-card {
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.style-card.selected {
+    border-color: #3b82f6;
+    background: #eff6ff;
+}
+
+.style-preview {
+    height: 60px;
+    background: #f3f4f6;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.style-preview.preview-executive {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+}
+
+.style-preview.preview-technical {
+    background: #e5e7eb;
+    border: 1px solid #9ca3af;
+}
+
+.style-preview.preview-creative {
+    background: linear-gradient(45deg, #ff6b6b, #feca57);
+}
+
+.style-preview.preview-minimal {
+    background: white;
+    border: 1px solid #e5e7eb;
+}
+
+input[type="range"] {
+    width: 100%;
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    appearance: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.primary-btn-large {
+    background: #3b82f6;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    padding: 16px 32px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background 0.2s;
+}
+
+.primary-btn-large:hover {
+    background: #2563eb;
+}
+
+/* Generating View */
+.generating-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.spinner-xl {
+    width: 64px;
+    height: 64px;
+    border: 5px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 24px;
+}
+
+/* Preview View */
+.preview-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #f3f4f6;
+}
+
+.preview-header {
+    height: 64px;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+}
+
+.slide-stage {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 24px;
+    overflow: hidden;
+}
+
+.nav-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: white;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #4b5563;
+}
+
+.nav-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.slide-canvas {
+    width: 800px;
+    aspect-ratio: 16/9;
+    background: white;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border-radius: 4px;
+    padding: 48px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.slide-canvas.style-executive {
+    border-top: 8px solid #1e3a8a;
+}
+
+.slide-canvas.style-creative {
+    border-bottom: 8px solid #ff6b6b;
+    background: linear-gradient(180deg, white 0%, #fff5f5 100%);
+}
+
+.thumbnails {
+    height: 80px;
+    background: white;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.thumb {
+    width: 100px;
+    height: 56px;
+    background: #f3f4f6;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #9ca3af;
+    cursor: pointer;
+}
+
+.thumb.active {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    color: #3b82f6;
+}
+
+/* Slide Content */
+.slide-content h1 {
+    font-size: 32px;
+    margin-bottom: 32px;
+    color: #111827;
+}
+
+.slide-content ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.slide-content li {
+    font-size: 20px;
+    margin-bottom: 16px;
+    color: #374151;
+    display: flex;
+    gap: 12px;
+}
+
+.slide-content li::before {
+    content: "•";
+    color: #3b82f6;
+}
+
+.slide-editor input,
+.slide-editor textarea {
+    width: 100%;
+    margin-bottom: 12px;
+    padding: 8px;
+    border: 1px dashed #d1d5db;
+    border-radius: 4px;
+}
+
+.slide-editor input:focus {
+    border-style: solid;
+    border-color: #3b82f6;
+    outline: none;
+}
+
+.edit-title {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.edit-notes {
+    margin-top: 24px;
+    height: 80px;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.speaker-notes-preview {
+    margin-top: auto;
+    padding-top: 24px;
+    border-top: 1px solid #e5e7eb;
+    font-size: 14px;
+    color: #6b7280;
+    font-style: italic;
+}

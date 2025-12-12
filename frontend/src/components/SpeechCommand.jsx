@@ -361,22 +361,37 @@ const SpeechCommand = ({
         }
 
         if (action) {
-            console.log('Parsed action:', action);
+            console.log('🎤 Voice command parsed:', action);
 
-            // Execute via callback
+            // Step 1: Apply action locally first
             if (onCommand) {
-                onCommand(action);
+                try {
+                    onCommand(action);
+                    console.log('✅ Voice command applied locally');
+                } catch (error) {
+                    console.error('❌ Failed to apply voice command locally:', error);
+                }
             }
 
-            // Send via WebSocket
+            // Step 2: Emit socket event for synchronization with other clients
             if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'voice_command',
-                    action
-                }));
+                const voiceActionEvent = {
+                    type: 'voice-action',
+                    payload: {
+                        action,
+                        transcript: text,
+                        timestamp: Date.now(),
+                        userId: socket.userId || 'anonymous'
+                    }
+                };
+
+                socket.send(JSON.stringify(voiceActionEvent));
+                console.log('📡 Voice action emitted to other clients:', voiceActionEvent);
+            } else {
+                console.warn('⚠️ Socket not connected, action not synchronized');
             }
         } else {
-            console.log('No matching command pattern for:', text);
+            console.log('❓ No matching command pattern for:', text);
         }
     };
 

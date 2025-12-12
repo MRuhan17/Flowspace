@@ -13,6 +13,10 @@ import { generateColorPalette, quickColorPalette, generatePaletteFromColor } fro
 import { storyExplain, quickStory, elevatorPitch, detailedNarrative } from '../ai/storyTeller.js';
 import { askBoard, batchAskBoard, quickAsk, suggestQuestions } from '../ai/query.js';
 import { generateSmartSuggestions, quickSuggestions, getHighPrioritySuggestions } from '../ai/smartSuggestions.js';
+import { generateDiagramFromScreenshot } from '../ai/screenshotDiagram.js';
+import { cleanBoard } from '../ai/cleanup.js';
+import { generatePresentation } from '../ai/presenter.js';
+import { analyzeUX } from '../ai/uxFeedback.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 
@@ -911,6 +915,85 @@ export const getHighPrioritySuggestionsOnly = async (req, res, next) => {
         res.json({
             success: true,
             data: suggestions
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Convert screenshot to diagram
+ */
+export const convertScreenshotToDiagram = async (req, res, next) => {
+    try {
+        const { image } = req.body;
+        if (!image) throw new AppError('Image data is required', 400);
+
+        const result = await generateDiagramFromScreenshot(image);
+
+        res.json({
+            success: true,
+            data: result.data,
+            meta: result.metadata
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Cleanup board drawings
+ */
+export const handleCleanupBoard = async (req, res, next) => {
+    try {
+        const { boardJSON, options } = req.body;
+        if (!boardJSON) throw new AppError('Board JSON is required', 400);
+
+        const result = await cleanBoard(boardJSON, options);
+
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Generate Presentation
+ */
+export const handleGeneratePresentation = async (req, res, next) => {
+    try {
+        const { boardJSON, settings } = req.body;
+        if (!boardJSON) throw new AppError('Board JSON is required', 400);
+
+        const result = await generatePresentation(boardJSON, settings);
+
+        // If PPTX, set headers for download
+        // But here we return JSON with base64 data for frontend flexibility
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * UX Analysis
+ */
+export const handleUXAnalysis = async (req, res, next) => {
+    try {
+        const { boardJSON, metadata } = req.body;
+        if (!boardJSON) throw new AppError('Board JSON is required', 400);
+
+        const result = await analyzeUX(boardJSON, metadata);
+
+        res.json({
+            success: true,
+            data: result
         });
     } catch (error) {
         next(error);
