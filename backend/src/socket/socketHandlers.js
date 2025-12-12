@@ -1,5 +1,6 @@
 import { boardService } from '../services/boardService.js';
 import { logger } from '../utils/logger.js';
+import { registerTextHandlers } from './textHandlers.js';
 
 // In-memory presence roster: Map<roomId, Set<userId>>
 const roomUsers = new Map();
@@ -7,6 +8,9 @@ const roomUsers = new Map();
 export const setupSocketHandlers = (io) => {
     io.on('connection', (socket) => {
         logger.info(`Socket connected: ${socket.id}`);
+
+        // Register Text Collaboration Handlers
+        registerTextHandlers(io, socket);
 
         // Join Room & Init
         socket.on('join-room', async (roomId) => {
