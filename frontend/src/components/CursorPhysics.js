@@ -1,10 +1,30 @@
 import React, { useEffect, useRef } from 'react';
 import { useStore } from '../state/useStore';
-import { MousePointer2 } from 'lucide-react';
+import { MousePointer2, Pencil, Eraser, Type, Hand } from 'lucide-react';
 
 const STIFFNESS = 0.15;
 const DAMPING = 0.8;
-const CUTOFF = 0.01; // Stop animation if close enough
+
+// Tool icon mapping
+const TOOL_ICONS = {
+    pen: Pencil,
+    eraser: Eraser,
+    select: Hand,
+    text: Type,
+};
+
+// Generate avatar initials from userId
+const getInitials = (userId) => {
+    if (!userId) return '?';
+    const parts = userId.split('-');
+    return parts[0].substring(0, 2).toUpperCase();
+};
+
+// Generate username from userId (simplified)
+const getUsername = (userId) => {
+    if (!userId) return 'Anonymous';
+    return `User ${userId.slice(0, 6)}`;
+};
 
 export const CursorPhysics = () => {
     const cursors = useStore((state) => state.cursors);
@@ -18,86 +38,20 @@ export const CursorPhysics = () => {
     // RequestAnimationFrame ID
     const rafId = useRef();
 
-    useEffect(() => {
-        const loop = () => {
-            // For each visible cursor
-            Object.keys(cursors).forEach(userId => {
-                const target = cursors[userId]; // {x, y, color}
-                const el = cursorRefs.current[userId];
-
-                if (!target || !el) return;
-
-                // Init sim state if missing
-                if (!simState.current[userId]) {
-                    simState.current[userId] = {
-                        x: target.x,
-                        y: target.y,
-                        vx: 0,
-                        vy: 0
-                    };
-                    // Set initial pos immediately
-                    el.style.transform = `translate(${target.x}px, ${target.y}px)`;
-                    return;
-                }
-
-                // Physics Step
-                const current = simState.current[userId];
-
-                // Force = (Target - Current) * Stiffness
-                const fx = (target.x - current.x) * STIFFNESS;
-                const fy = (target.y - current.y) * STIFFNESS;
-
-                // Velocity = (Velocity + Force) * Damping
-                current.vx = (current.vx + fx) * DAMPING;
-                current.vy = (current.vy + fy) * DAMPING;
-
-                // Update Position
-                current.x += current.vx;
-                current.y += current.vy;
-
-                // Sleep check (optimization)
-                // If extremely close and slow, just snap? 
-                // Skip for smoothness, browsers handle transform updates well.
-
-                // Apply to DOM
-                el.style.transform = `translate(${current.x.toFixed(2)}px, ${current.y.toFixed(2)}px)`;
-            });
-
-            // Cleanup simState for users who left
-            Object.keys(simState.current).forEach(id => {
-                if (!cursors[id]) {
-                    delete simState.current[id];
-                    delete cursorRefs.current[id];
-                }
-            });
-
-            rafId.current = requestAnimationFrame(loop);
-        };
-
-        rafId.current = requestAnimationFrame(loop);
-
-        return () => {
-            if (rafId.current) cancelAnimationFrame(rafId.current);
-        };
-    }, [cursors]); // Re-run if cursors object reference changes? 
-    // Actually, if 'cursors' changes, the loop closure captures old 'cursors'?
-    // 'cursors' in 'useStore' is likely a new object on update.
-    // Ideally we use a Ref for latest 'cursors' target to avoid re-starting RAF loop constantly.
-
-    // Optimization: Store latest cursors in ref
+    // Store latest cursors in ref for RAF loop
     const cursorsRef = useRef(cursors);
     useEffect(() => {
         cursorsRef.current = cursors;
     }, [cursors]);
 
-    // Independent Loop
+    // Physics animation loop
     useEffect(() => {
         const animate = () => {
             const targets = cursorsRef.current;
 
             Object.keys(targets).forEach(userId => {
                 const target = targets[userId];
-                const el = cursorRefs.current[userId]; // Refs are stable
+                const el = cursorRefs.current[userId];
 
                 if (!target || !el) return;
 
@@ -129,29 +83,64 @@ export const CursorPhysics = () => {
         return () => cancelAnimationFrame(rafId.current);
     }, []);
 
-    // Render static divs (React handles creation/removal, Physics handles movement)
+    // Render cursors with user cards
     return (
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-30">
-            {Object.entries(cursors).map(([userId, pos]) => (
-                <div
-                    key={userId}
-                    ref={el => cursorRefs.current[userId] = el}
-                    className="absolute top-0 left-0" // No generic transition!
-                    style={{
-                        // Initial position set by Ref/Layout, handled by Physics primarily
-                        // Color passed for child
-                        color: pos.color || '#FF5733'
-                    }}
-                >
-                    <MousePointer2 className="w-5 h-5 fill-current" />
+            {Object.entries(cursors).map(([userId, data]) => {
+                const ToolIcon = TOOL_ICONS[data.tool] || MousePointer2;
+                const username = getUsername(userId);
+                const initials = getInitials(userId);
+                const color = data.color || '#FF5733';
+
+                return (
                     <div
-                        className="absolute left-4 top-4 px-2 py-0.5 rounded-full text-xs font-bold text-white whitespace-nowrap"
-                        style={{ backgroundColor: pos.color || '#FF5733' }}
+                        key={userId}
+                        ref={el => cursorRefs.current[userId] = el}
+                        className="absolute top-0 left-0"
                     >
-                        {userId.slice(0, 4)}
+                        {/* Cursor Icon */}
+                        <MousePointer2 
+                            className="w-5 h-5 drop-shadow-lg" 
+                            style={{ color }}
+                            fill={color}
+                        />
+
+                        {/* User Card */}
+                        <div
+                            className="absolute left-6 top-0 bg-white rounded-lg shadow-xl border border-gray-200 px-3 py-2 flex items-center gap-2 min-w-[140px] animate-fadeIn"
+                            style={{ borderLeftColor: color, borderLeftWidth: '3px' }}
+                        >
+                            {/* Avatar */}
+                            <div
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                                style={{ backgroundColor: color }}
+                            >
+                                {initials}
+                            </div>
+
+                            {/* User Info */}
+                            <div className="flex-1 min-w-0">
+                                <div className="text-xs font-semibold text-gray-900 truncate">
+                                    {username}
+                                </div>
+                                <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                                    <ToolIcon className="w-3 h-3" />
+                                    <span className="capitalize">{data.tool || 'select'}</span>
+                                </div>
+                            </div>
+
+                            {/* Typing Indicator */}
+                            {data.isTyping && (
+                                <div className="flex gap-0.5">
+                                    <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                                    <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                    <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
 };

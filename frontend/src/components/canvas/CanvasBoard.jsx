@@ -85,11 +85,17 @@ export const CanvasBoard = () => {
         });
     }, [crdt]);
 
-    // Throttled cursor tracking
+    // Throttled cursor tracking with tool info
     const throttledEmitCursor = useRef(
-        throttle((roomId, x, y) => {
+        throttle((roomId, x, y, toolMode) => {
             import('../../socket/socket').then(({ socketService }) => {
-                socketService.sendCursor(roomId, x, y);
+                socketService.socket?.emit('cursor-move', {
+                    roomId,
+                    x,
+                    y,
+                    userId: socketService.socket.id,
+                    tool: toolMode
+                });
             });
         }, 100)
     ).current;
@@ -125,13 +131,13 @@ export const CanvasBoard = () => {
             selectionHandlers.onMouseMove(e);
             const stage = e.target.getStage();
             const point = stage.getPointerPosition();
-            throttledEmitCursor(activeBoardId, point.x, point.y);
+            throttledEmitCursor(activeBoardId, point.x, point.y, tool);
             return;
         }
 
         const stage = e.target.getStage();
         const point = stage.getPointerPosition();
-        throttledEmitCursor(activeBoardId, point.x, point.y);
+        throttledEmitCursor(activeBoardId, point.x, point.y, tool);
 
         if (!isDrawing.current) return;
 
