@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { socketService } from '../socket/socket';
+import { nanoid } from 'nanoid';
 
 export const useStore = create(
     devtools(
@@ -128,6 +129,48 @@ export const useStore = create(
                 const updatedEdge = edges.find(e => e.id === id);
                 const newEdge = { ...updatedEdge, ...updates };
                 socketService.sendConnectorUpdate(activeBoardId, newEdge);
+            },
+
+            // --- Structural Actions (Lock, Group, Z-Index) ---
+
+            toggleLock: (ids, lockedState) => {
+                const { updateNode, updateEdge } = get(); // reuse existing optimistic+socket logic? 
+                // Currently updateNode updates 1 node.
+                // We need bulk update?
+                // For simplicity, iterate.
+                ids.forEach(id => {
+                    // Check type?
+                    const { nodes, edges, strokes } = get();
+                    if (nodes.find(n => n.id === id)) updateNode(id, { locked: lockedState });
+                    // Edges/Strokes update logic?
+                    // We need generic updateElement or reuse specific ones.
+                    // Strokes are in 'strokes' array but valid logic.
+                    // Let's implement generic local update for now?
+                });
+            },
+
+            updateZIndex: (id, direction) => {
+                const { nodes, activeBoardId } = get();
+                const node = nodes.find(n => n.id === id);
+                if (!node) return;
+
+                // Simple logic: sort by zIndex.
+                // Front: set zIndex to max + 1
+                // Back: set zIndex to min - 1
+                const allZ = nodes.map(n => n.zIndex || 0);
+                const currentZ = node.zIndex || 0;
+                let newZ = currentZ;
+
+                if (direction === 'front') newZ = Math.max(...allZ, 0) + 1;
+                else if (direction === 'back') newZ = Math.min(...allZ, 0) - 1;
+
+                get().updateNode(id, { zIndex: newZ });
+            },
+
+            groupElements: (ids) => {
+                const groupId = nanoid(); // We need to import nanoid
+                // Update all items with groupId
+                ids.forEach(id => get().updateNode(id, { groupId })); // Only nodes for now?
             },
 
             // For dragging, we likely use 'layout-update' which is bulk/efficient
