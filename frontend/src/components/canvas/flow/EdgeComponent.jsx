@@ -89,7 +89,6 @@ export const EdgeComponent = React.memo(({ edge, sourcePos, targetPos, isSelecte
             {/* Arrowhead at Target */}
             {!isDraft && (
                 <Arrow
-                    points={[0, 0, 10, 0]} // Length 10
                     x={targetPos.x}
                     y={targetPos.y}
                     offsetY={0}

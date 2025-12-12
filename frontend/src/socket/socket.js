@@ -40,6 +40,13 @@ class FlowspaceSocket {
         // Backend Event Mapping
         this.socket.on("board-init", (data) => this._emit('onInit', data.elements || data.strokes));
         this.socket.on("draw-stroke", (stroke) => this._emit('onDraw', stroke));
+
+        // Map specific events to generic onDraw for store handling
+        this.socket.on("node-add", (node) => this._emit('onDraw', node));
+        this.socket.on("node-update", (node) => this._emit('onDraw', node));
+        this.socket.on("connector-add", (conn) => this._emit('onDraw', conn));
+        this.socket.on("connector-update", (conn) => this._emit('onDraw', conn));
+
         this.socket.on("sync-board", (data) => this._emit('onSync', data.elements || data.strokes));
         this.socket.on("cursor-move", (data) => this._emit('onCursor', data));
     }
@@ -54,6 +61,26 @@ class FlowspaceSocket {
     sendStroke(roomId, stroke) {
         if (!this.socket) return;
         this.socket.emit("draw-stroke", { roomId, stroke });
+    }
+
+    sendNodeAdd(roomId, node) {
+        if (!this.socket) return;
+        this.socket.emit("node-add", { roomId, node });
+    }
+
+    sendNodeUpdate(roomId, node) {
+        if (!this.socket) return;
+        this.socket.emit("node-update", { roomId, node });
+    }
+
+    sendConnectorAdd(roomId, connector) {
+        if (!this.socket) return;
+        this.socket.emit("connector-add", { roomId, connector });
+    }
+
+    sendConnectorUpdate(roomId, connector) {
+        if (!this.socket) return;
+        this.socket.emit("connector-update", { roomId, connector });
     }
 
     sendUndo(roomId) {

@@ -93,21 +93,41 @@ export const useStore = create(
                 // Optimistic
                 set(state => ({ nodes: [...state.nodes, node] }));
                 // Emit
-                socketService.sendStroke(activeBoardId, { ...node, type: 'node' });
+                socketService.sendNodeAdd(activeBoardId, { ...node, type: 'node' });
             },
 
             addEdge: (edge) => {
                 const { activeBoardId } = get();
                 set(state => ({ edges: [...state.edges, edge] }));
-                socketService.sendStroke(activeBoardId, { ...edge, type: 'edge' });
+                socketService.sendConnectorAdd(activeBoardId, { ...edge, type: 'edge' });
             },
 
             updateNode: (id, updates) => {
+                const { activeBoardId, nodes } = get();
                 set(state => ({
                     nodes: state.nodes.map(n => n.id === id ? { ...n, ...updates } : n)
                 }));
-                // We don't emit continuously here (handled by DragEnd usually), 
-                // but for non-drag updates we might want to.
+                // Emit update
+                // construct full node or partial? Backend addOperation replaces element currently.
+                // Optimally we send delta, but let's send full merged object for safety if backend replaces.
+                // Or send just updates if we add specific 'node-update' handler that merges.
+                // Current backend 'draw-stroke' replaced.
+                // New 'node-update' should probably merge.
+                // Let's assume we send the updated node object.
+                const updatedNode = nodes.find(n => n.id === id); // This is OLD state before set.
+                // We need new state.
+                const newNode = { ...updatedNode, ...updates };
+                socketService.sendNodeUpdate(activeBoardId, newNode);
+            },
+
+            updateEdge: (id, updates) => {
+                const { activeBoardId, edges } = get();
+                set(state => ({
+                    edges: state.edges.map(e => e.id === id ? { ...e, ...updates } : e)
+                }));
+                const updatedEdge = edges.find(e => e.id === id);
+                const newEdge = { ...updatedEdge, ...updates };
+                socketService.sendConnectorUpdate(activeBoardId, newEdge);
             },
 
             // For dragging, we likely use 'layout-update' which is bulk/efficient
@@ -116,16 +136,28 @@ export const useStore = create(
             receiveElement: (element) => {
                 set(state => {
                     if (element.type === 'node') {
-                        if (state.nodes.some(n => n.id === element.id)) return state;
-                        return { nodes: [...state.nodes, element] };
+                        const exists = state.nodes.some(n => n.id === element.id);
+                        return {
+                            nodes: exists
+                                ? state.nodes.map(n => n.id === element.id ? element : n)
+                                : [...state.nodes, element]
+                        };
                     }
                     if (element.type === 'edge') {
-                        if (state.edges.some(e => e.id === element.id)) return state;
-                        return { edges: [...state.edges, element] };
+                        const exists = state.edges.some(e => e.id === element.id);
+                        return {
+                            edges: exists
+                                ? state.edges.map(e => e.id === element.id ? element : e)
+                                : [...state.edges, element]
+                        };
                     }
                     // Stroke
-                    if (state.strokes.some(s => s.id === element.id)) return state;
-                    return { strokes: [...state.strokes, element] };
+                    const exists = state.strokes.some(s => s.id === element.id);
+                    return {
+                        strokes: exists
+                            ? state.strokes.map(s => s.id === element.id ? element : s)
+                            : [...state.strokes, element]
+                    };
                 });
             },
 
