@@ -6,7 +6,10 @@ import { nanoid } from 'nanoid';
 import throttle from 'lodash/throttle';
 import Konva from 'konva';
 import { useSelectionBehavior } from '../../hooks/useSelectionBehavior';
+import { useFlowEngine } from '../../hooks/useFlowEngine';
 import { TransformerComponent } from './TransformerComponent';
+import { NodeComponent } from './flow/NodeComponent';
+import { EdgeComponent } from './flow/EdgeComponent';
 import { TOOLS } from '../../utils/constants';
 
 // Optimized Stroke Component
@@ -76,6 +79,13 @@ export const CanvasBoard = () => {
     // Selection Hook
     const { selectionHandlers, selectionBox } = useSelectionBehavior(stageRef);
 
+    // Flow Engine Hook
+    const {
+        nodes, edges, connectionDraft,
+        getPortPosition,
+        handlers: flowHandlers
+    } = useFlowEngine();
+
     const handleMouseDown = useCallback((e) => {
         // Handle Selection Logic First if in SELECT mode
         if (tool === TOOLS.SELECT) {
@@ -90,6 +100,14 @@ export const CanvasBoard = () => {
 
     const handleMouseMove = useCallback((e) => {
         if (tool === TOOLS.SELECT) {
+            // Check if we are interacting with flow?
+            // If dragging a node, Konva handles it.
+            // If dragging a connection, flowHandlers.onMouseMove handles it?
+            if (connectionDraft) {
+                flowHandlers.onMouseMove(e);
+                return;
+            }
+
             selectionHandlers.onMouseMove(e);
             // Also emit cursor
             const stage = e.target.getStage();
@@ -111,6 +129,9 @@ export const CanvasBoard = () => {
 
     const handleMouseUp = useCallback(() => {
         if (tool === TOOLS.SELECT) {
+            if (connectionDraft) {
+                flowHandlers.onMouseUp(e);
+            }
             selectionHandlers.onMouseUp();
             return;
         }
@@ -366,6 +387,47 @@ export const CanvasBoard = () => {
                     onTouchMove={handleMouseMove}
                     onTouchEnd={handleMouseUp}
                 >
+                    {/* Layer 0: Flow Graph (Edges behind nodes) */}
+                    <Layer>
+                        {edges.map(edge => {
+                            const sourcePos = getPortPosition(edge.source, edge.sourceHandle, 'output');
+                            const targetPos = getPortPosition(edge.target, edge.targetHandle, 'input');
+                            return (
+                                <EdgeComponent
+                                    key={edge.id}
+                                    edge={edge}
+                                    sourcePos={sourcePos}
+                                    targetPos={targetPos}
+                                    isSelected={false} // TODO
+                                />
+                            );
+                        })}
+
+                        {/* Draft Connection */}
+                        {connectionDraft && (
+                            <EdgeComponent
+                                isDraft={true}
+                                edge={{}}
+                                sourcePos={getPortPosition(connectionDraft.sourceId, connectionDraft.sourceHandle, 'output')}
+                                targetPos={connectionDraft.mousePos}
+                            />
+                        )}
+                    </Layer>
+
+                    {/* Layer 0.5: Flow Nodes */}
+                    <Layer>
+                        {nodes.map(node => (
+                            <NodeComponent
+                                key={node.id}
+                                node={node}
+                                onDragMove={flowHandlers.onNodeDragMove}
+                                onDragEnd={flowHandlers.onNodeDragEnd}
+                                onPortDown={flowHandlers.onPortDown}
+                                onPortUp={flowHandlers.onPortUp}
+                            />
+                        ))}
+                    </Layer>
+
                     {/* Layer 1: Committed Strokes */}
                     <Layer ref={layerRef}>
                         {strokes.map((stroke) => (
