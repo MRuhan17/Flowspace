@@ -14,6 +14,7 @@ export const useStore = create(
             isDrawing: false,
             isBoardLoading: true,
             layoutAnimation: null, // Holds { [id]: {x, y} }
+            isAiAssistantOpen: false,
 
             selectedObjectIds: [], // Currently selected element IDs
 
@@ -44,6 +45,7 @@ export const useStore = create(
             setIsDrawing: (isDrawing) => set({ isDrawing }),
             setIsBoardLoading: (isLoading) => set({ isBoardLoading: isLoading }),
             setLayoutAnimation: (data) => set({ layoutAnimation: data }),
+            toggleAiAssistant: () => set(state => ({ isAiAssistantOpen: !state.isAiAssistantOpen })),
 
             // Selection Actions
             selectOne: (id) => set({ selectedObjectIds: [id] }),

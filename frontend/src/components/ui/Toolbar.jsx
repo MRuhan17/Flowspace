@@ -5,7 +5,8 @@ import {
     Pencil, Eraser, Undo, Redo,
     MousePointer2, Minus, Maximize,
     Sparkles, Loader2, Trash2, Group,
-    Lock, Unlock, Ungroup, BringToFront, SendToBack
+    Lock, Unlock, Ungroup, BringToFront, SendToBack,
+    Bot
 } from 'lucide-react';
 import clsx from 'clsx';
 import { layoutService } from '../../api/layoutService';
@@ -20,6 +21,7 @@ export const Toolbar = () => {
         setStrokes,
         selectedObjectIds,
         toggleLock, updateZIndex, groupElements, updateNode,
+        toggleAiAssistant, isAiAssistantOpen,
         clearSelection
     } = useStore();
 
@@ -219,6 +221,21 @@ export const Toolbar = () => {
                             <span>Auto Layout</span>
                         </>
                     )}
+                </button>
+
+                <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-200 to-transparent"></div>
+
+                <button
+                    onClick={toggleAiAssistant}
+                    className={clsx(
+                        "p-2.5 rounded-lg transition-all active:scale-95",
+                        isAiAssistantOpen
+                            ? "bg-purple-100 text-purple-600 shadow-inner"
+                            : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                    )}
+                    title="Design AI Assistant"
+                >
+                    <Bot size={18} strokeWidth={2.5} />
                 </button>
 
                 {selectedObjectIds.length > 0 && (

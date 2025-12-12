@@ -3,6 +3,7 @@ import { CanvasBoard } from './components/canvas/CanvasBoard';
 import { Toolbar } from './components/ui/Toolbar';
 import { AITools } from './components/ai/AITools';
 import { AIPanel } from './components/ai/AIPanel';
+import { DesignAssistant } from './components/DesignAssistant';
 import { SnapshotLoader } from './components/SnapshotLoader';
 import { CursorPhysics } from './components/CursorPhysics';
 import { PresenceAvatars } from './components/PresenceAvatars';
@@ -49,6 +50,7 @@ function App() {
 
             {/* Overlays */}
             <AIPanel />
+            <DesignAssistant />
             <SnapshotLoader />
 
         </div>
