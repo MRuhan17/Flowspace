@@ -1,9 +1,11 @@
+import React, { useEffect } from 'react';
 import { CanvasBoard } from './components/canvas/CanvasBoard';
 import { Toolbar } from './components/ui/Toolbar';
 import { AITools } from './components/ai/AITools';
 import { AIPanel } from './components/ai/AIPanel';
 import { SnapshotLoader } from './components/SnapshotLoader';
-import { CursorGhosts } from './components/CursorGhosts';
+import { CursorPhysics } from './components/CursorPhysics';
+import { PresenceAvatars } from './components/PresenceAvatars';
 import { useSocketListeners } from './hooks/useSocketListeners';
 import { useStore } from './state/useStore';
 
@@ -23,6 +25,8 @@ function App() {
     return (
         <div className="relative w-full h-screen bg-gray-50 flex flex-col font-sans text-gray-900 select-none">
 
+            <PresenceAvatars />
+
             {/* Nav / Brand Header (Optional) */}
             <div className="absolute top-4 left-6 z-40 pointer-events-none">
                 <h1 className="text-2xl font-black tracking-tighter text-gray-900 flex items-center gap-2">
@@ -37,7 +41,7 @@ function App() {
             {/* Main Canvas Area */}
             <main className="flex-1 w-full h-full relative overflow-hidden">
                 <CanvasBoard />
-                <CursorGhosts />
+                <CursorPhysics />
             </main>
 
             {/* Floating Toolbar */}
