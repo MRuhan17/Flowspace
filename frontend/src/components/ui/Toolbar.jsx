@@ -4,7 +4,8 @@ import { TOOLS, BOARD_COLORS } from '../../utils/constants';
 import {
     Pencil, Eraser, Undo, Redo,
     MousePointer2, Minus, Maximize,
-    Sparkles, Loader2, Trash2, Group
+    Sparkles, Loader2, Trash2, Group,
+    Lock, Unlock, Ungroup, BringToFront, SendToBack
 } from 'lucide-react';
 import clsx from 'clsx';
 import { layoutService } from '../../api/layoutService';
@@ -18,8 +19,7 @@ export const Toolbar = () => {
         strokes,
         setStrokes,
         selectedObjectIds,
-        // clearSelection is usually needed after delete, but setStrokes handles ID removal implicitly? 
-        // No, we should explicitly clear selection if IDs are gone to clean state.
+        toggleLock, updateZIndex, groupElements, updateNode,
         clearSelection
     } = useStore();
 
@@ -225,19 +225,66 @@ export const Toolbar = () => {
                     <>
                         <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-200 to-transparent"></div>
                         <div className="flex gap-1 animate-fadeIn">
+                            {/* Layer Controls */}
+                            <button
+                                onClick={() => selectedObjectIds.forEach(id => updateZIndex(id, 'front'))}
+                                className="p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors active:scale-95"
+                                title="Bring to Front"
+                            >
+                                <BringToFront size={18} strokeWidth={2.5} />
+                            </button>
+                            <button
+                                onClick={() => selectedObjectIds.forEach(id => updateZIndex(id, 'back'))}
+                                className="p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors active:scale-95"
+                                title="Send to Back"
+                            >
+                                <SendToBack size={18} strokeWidth={2.5} />
+                            </button>
+
+                            <div className="w-px h-4 bg-gray-200 mx-1 self-center"></div>
+
+                            {/* Lock Controls */}
+                            <button
+                                onClick={() => toggleLock(selectedObjectIds, true)}
+                                className="p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors active:scale-95"
+                                title="Lock Selected"
+                            >
+                                <Lock size={18} strokeWidth={2.5} />
+                            </button>
+                            <button
+                                onClick={() => toggleLock(selectedObjectIds, false)}
+                                className="p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors active:scale-95"
+                                title="Unlock Selected"
+                            >
+                                <Unlock size={18} strokeWidth={2.5} />
+                            </button>
+
+                            <div className="w-px h-4 bg-gray-200 mx-1 self-center"></div>
+
+                            {/* Group Controls */}
+                            <button
+                                onClick={() => groupElements(selectedObjectIds)}
+                                className="p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors active:scale-95"
+                                title="Group (Ctrl+G)"
+                            >
+                                <Group size={18} strokeWidth={2.5} />
+                            </button>
+                            <button
+                                onClick={() => selectedObjectIds.forEach(id => updateNode(id, { groupId: null }))}
+                                className="p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors active:scale-95"
+                                title="Ungroup"
+                            >
+                                <Ungroup size={18} strokeWidth={2.5} />
+                            </button>
+
+                            <div className="w-px h-4 bg-gray-200 mx-1 self-center"></div>
+
                             <button
                                 onClick={handleDeleteSelected}
                                 className="p-2.5 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors active:scale-95"
                                 title="Delete Selected (Del)"
                             >
                                 <Trash2 size={18} strokeWidth={2.5} />
-                            </button>
-                            {/* Grouping placeholder */}
-                            <button
-                                className="p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors active:scale-95"
-                                title="Group Selected (Ctrl+G)"
-                            >
-                                <Group size={18} strokeWidth={2.5} />
                             </button>
                         </div>
                     </>
