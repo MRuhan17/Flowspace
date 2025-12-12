@@ -38,9 +38,9 @@ class FlowspaceSocket {
         });
 
         // Backend Event Mapping
-        this.socket.on("board-init", (data) => this._emit('onInit', data.strokes));
+        this.socket.on("board-init", (data) => this._emit('onInit', data.elements || data.strokes));
         this.socket.on("draw-stroke", (stroke) => this._emit('onDraw', stroke));
-        this.socket.on("sync-board", (data) => this._emit('onSync', data.strokes));
+        this.socket.on("sync-board", (data) => this._emit('onSync', data.elements || data.strokes));
         this.socket.on("cursor-move", (data) => this._emit('onCursor', data));
     }
 

@@ -13,10 +13,10 @@ export const setupSocketHandlers = (io) => {
             logger.info(`Socket ${socket.id} joined room ${roomId}`);
 
             // Fetch current board state
-            const strokes = await boardService.getBoardState(roomId);
+            const elements = await boardService.getBoardState(roomId);
 
             // Emit initialization event with current strokes
-            socket.emit('board-init', { strokes });
+            socket.emit('board-init', { elements });
 
             // Notify others
             socket.to(roomId).emit('user-joined', { userId: socket.id });
@@ -52,7 +52,7 @@ export const setupSocketHandlers = (io) => {
             const newBoardState = await boardService.undo(roomId);
             if (newBoardState) {
                 // Broadcast FULL sync to ensure consistency after undo
-                io.to(roomId).emit('sync-board', { strokes: newBoardState });
+                io.to(roomId).emit('sync-board', { elements: newBoardState });
             }
         });
 
@@ -64,7 +64,7 @@ export const setupSocketHandlers = (io) => {
             const newBoardState = await boardService.redo(roomId);
             if (newBoardState) {
                 // Broadcast FULL sync to ensure consistency after redo
-                io.to(roomId).emit('sync-board', { strokes: newBoardState });
+                io.to(roomId).emit('sync-board', { elements: newBoardState });
             }
         });
 
@@ -82,8 +82,8 @@ export const setupSocketHandlers = (io) => {
             const { roomId } = payload;
             if (!roomId) return;
 
-            const strokes = await boardService.getBoardState(roomId);
-            socket.emit('sync-board', { strokes });
+            const elements = await boardService.getBoardState(roomId);
+            socket.emit('sync-board', { elements });
         });
 
         // Disconnect

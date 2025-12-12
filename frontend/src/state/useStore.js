@@ -69,11 +69,59 @@ export const useStore = create(
             // Remote Sync
             setStrokes: (newStrokes) => set({ strokes: newStrokes }),
 
-            receiveStroke: (stroke) => {
-                set((state) => {
-                    // Prevent duplicates if possible
-                    if (state.strokes.some(s => s.id === stroke.id)) return state;
-                    return { strokes: [...state.strokes, stroke] };
+            // Unified State Setter
+            setBoardElements: (elements) => {
+                const strokes = [];
+                const nodes = [];
+                const edges = [];
+
+                elements.forEach(el => {
+                    if (el.type === 'node') nodes.push(el);
+                    else if (el.type === 'edge') edges.push(el);
+                    else strokes.push(el); // Default to stroke
+                });
+
+                set({ strokes, nodes, edges });
+            },
+
+            addNode: (node) => {
+                const { activeBoardId } = get();
+                // Optimistic
+                set(state => ({ nodes: [...state.nodes, node] }));
+                // Emit
+                socketService.sendStroke(activeBoardId, { ...node, type: 'node' });
+            },
+
+            addEdge: (edge) => {
+                const { activeBoardId } = get();
+                set(state => ({ edges: [...state.edges, edge] }));
+                socketService.sendStroke(activeBoardId, { ...edge, type: 'edge' });
+            },
+
+            updateNode: (id, updates) => {
+                set(state => ({
+                    nodes: state.nodes.map(n => n.id === id ? { ...n, ...updates } : n)
+                }));
+                // We don't emit continuously here (handled by DragEnd usually), 
+                // but for non-drag updates we might want to.
+            },
+
+            // For dragging, we likely use 'layout-update' which is bulk/efficient
+            // The DragEnd handler in useFlowEngine should call a sync method.
+
+            receiveElement: (element) => {
+                set(state => {
+                    if (element.type === 'node') {
+                        if (state.nodes.some(n => n.id === element.id)) return state;
+                        return { nodes: [...state.nodes, element] };
+                    }
+                    if (element.type === 'edge') {
+                        if (state.edges.some(e => e.id === element.id)) return state;
+                        return { edges: [...state.edges, element] };
+                    }
+                    // Stroke
+                    if (state.strokes.some(s => s.id === element.id)) return state;
+                    return { strokes: [...state.strokes, element] };
                 });
             },
 

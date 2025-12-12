@@ -4,7 +4,7 @@ import { theme } from '../../../utils/theme';
 
 export const EdgeComponent = React.memo(({ edge, sourcePos, targetPos, isSelected, isDraft }) => {
 
-    // Calculate Bézier Path
+    // Calculate Path
     const sceneFunc = useMemo(() => {
         return (context, shape) => {
             const sx = sourcePos.x;
@@ -12,24 +12,35 @@ export const EdgeComponent = React.memo(({ edge, sourcePos, targetPos, isSelecte
             const tx = targetPos.x;
             const ty = targetPos.y;
 
-            const dist = Math.abs(tx - sx);
-            // Curvature based on distance but capped
-            const curvature = Math.min(dist * 0.5, 100) + 20;
+            const routingType = edge.data?.routing || 'bezier'; // 'bezier' | 'orthogonal'
 
             context.beginPath();
             context.moveTo(sx, sy);
 
-            // Cubic Bezier: CP1, CP2, End
-            context.bezierCurveTo(
-                sx + curvature, sy, // CP1 (Right of source)
-                tx - curvature, ty, // CP2 (Left of target)
-                tx, ty
-            );
+            if (routingType === 'orthogonal') {
+                // Simple Manhattan routing (Mid-X)
+                // TODO: Smart routing would avoid nodes, but Mid-X is standard for simple flowcharts
+                const midX = (sx + tx) / 2;
+
+                context.lineTo(midX, sy);
+                context.lineTo(midX, ty);
+                context.lineTo(tx, ty);
+            } else {
+                // Cubic Bezier (Default)
+                const dist = Math.abs(tx - sx);
+                const curvature = Math.min(dist * 0.5, 100) + 20;
+
+                context.bezierCurveTo(
+                    sx + curvature, sy,
+                    tx - curvature, ty,
+                    tx, ty
+                );
+            }
 
             // context.closePath() is NOT used for open paths
             context.fillStrokeShape(shape);
         };
-    }, [sourcePos, targetPos]);
+    }, [sourcePos, targetPos, edge.data]);
 
     const color = isSelected || isDraft ? theme.colors.primary : '#cbd5e1'; // theme.colors.borderStrong
     const width = isSelected ? 4 : 2;

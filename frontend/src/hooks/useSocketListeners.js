@@ -8,8 +8,8 @@ import throttle from 'lodash/throttle';
  */
 export const useSocketListeners = () => {
     // Select actions from store to avoid re-running effect on every state change
-    const setStrokes = useStore((state) => state.setStrokes);
-    const receiveStroke = useStore((state) => state.receiveStroke);
+    const setBoardElements = useStore((state) => state.setBoardElements); // Replaced setStrokes
+    const receiveElement = useStore((state) => state.receiveElement); // Replaced receiveStroke
     const updateCursor = useStore((state) => state.updateCursor);
     const activeBoardId = useStore((state) => state.activeBoardId);
     const setIsBoardLoading = useStore((state) => state.setIsBoardLoading);
@@ -20,20 +20,20 @@ export const useSocketListeners = () => {
         socketService.joinRoom(activeBoardId);
 
         // Handlers
-        const handleInit = (strokes) => {
-            console.log(`[Socket] Board Init: ${strokes.length} strokes`);
-            setStrokes(strokes);
+        const handleInit = (elements) => {
+            console.log(`[Socket] Board Init: ${elements.length} elements`);
+            setBoardElements(elements);
             setIsBoardLoading(false);
         };
 
-        const handleSync = (strokes) => {
-            console.log(`[Socket] Sync received: ${strokes.length} strokes`);
-            setStrokes(strokes);
+        const handleSync = (elements) => {
+            console.log(`[Socket] Sync received: ${elements.length} elements`);
+            setBoardElements(elements);
             setIsBoardLoading(false);
         };
 
-        const handleDraw = (stroke) => {
-            receiveStroke(stroke);
+        const handleDraw = (element) => {
+            receiveElement(element);
         };
 
         // Throttled cursor update to prevent React render thrashing
@@ -67,6 +67,7 @@ export const useSocketListeners = () => {
 
             // Optionally leave room? 
             // socketService.socket.emit('leave-room', activeBoardId);
+            // socketService.socket.emit('leave-room', activeBoardId);
         };
-    }, [activeBoardId, setStrokes, receiveStroke, updateCursor]);
+    }, [activeBoardId, setBoardElements, receiveElement, updateCursor]);
 };
