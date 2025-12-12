@@ -1,6 +1,9 @@
 import { boardService } from '../services/boardService.js';
 import { logger } from '../utils/logger.js';
 
+// In-memory presence roster: Map<roomId, Set<userId>>
+const roomUsers = new Map();
+
 export const setupSocketHandlers = (io) => {
     io.on('connection', (socket) => {
         logger.info(`Socket connected: ${socket.id}`);
@@ -12,14 +15,22 @@ export const setupSocketHandlers = (io) => {
             await socket.join(roomId);
             logger.info(`Socket ${socket.id} joined room ${roomId}`);
 
-            // Fetch current board state
-            const elements = await boardService.getBoardState(roomId);
+            // Update roster
+            if (!roomUsers.has(roomId)) {
+                roomUsers.set(roomId, new Set());
+            }
+            roomUsers.get(roomId).add(socket.id);
 
-            // Emit initialization event with current strokes
+            // Fetch board state
+            const elements = await boardService.getBoardState(roomId);
             socket.emit('board-init', { elements });
 
-            // Notify others
+            // Broadcast join to others
             socket.to(roomId).emit('presence-join', { userId: socket.id });
+
+            // Send current roster to the new user
+            const users = Array.from(roomUsers.get(roomId));
+            socket.emit('presence-roster', { users });
         });
 
         // Draw Stroke (Idempotent addition/update)
@@ -64,7 +75,7 @@ export const setupSocketHandlers = (io) => {
             }
         });
 
-        // Cursor Move (Ephemeral) - Sync, no try/catch needed usually, but safe to add if logic expands
+        // Cursor Move (Ephemeral)
         socket.on('cursor-move', (payload) => {
             const { roomId, x, y, userId } = payload;
             if (!roomId) return;
@@ -120,11 +131,18 @@ export const setupSocketHandlers = (io) => {
             }
         });
 
-        // Disconnect
+        // Disconnect logic with Roster cleaning
         socket.on('disconnecting', () => {
-            // socket.rooms is a Set. One of them is the socket ID, others are joined rooms.
             for (const room of socket.rooms) {
                 if (room !== socket.id) {
+                    // Update roster
+                    if (roomUsers.has(room)) {
+                        const users = roomUsers.get(room);
+                        users.delete(socket.id);
+                        if (users.size === 0) {
+                            roomUsers.delete(room);
+                        }
+                    }
                     socket.to(room).emit('presence-leave', { userId: socket.id });
                 }
             }
@@ -134,5 +152,4 @@ export const setupSocketHandlers = (io) => {
             logger.info(`Socket disconnected: ${socket.id}`);
         });
     });
-
 };
