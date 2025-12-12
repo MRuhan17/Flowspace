@@ -1,26 +1,23 @@
-import React, { useState } from 'react';
-import { useStore } from '../../state/useStore'; // Updated from useBoardStore
-import { X, Sparkles, AlertCircle, RefreshCw, Copy, Check } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useStore } from '../../state/useStore';
+import { X, Sparkles, RefreshCw, Copy, Check, FileText, PenTool, StickyNote } from 'lucide-react';
 import clsx from 'clsx';
-import { API_BASE_URL } from '../../utils/constants';
+import { theme } from '../../utils/theme';
+import { Panel } from '../design/Panel';
+import { Button } from '../design/Button';
+import { IconButton } from '../design/IconButton';
 
 export const AIPanel = () => {
-    // We reuse the existing modal state or create a sidebar state
-    // The previous steps created 'aiModal' in the store? Yes.
-    // This panel can double as the "Sidebar" result view or a floating panel.
-    // Let's implement it as a sophisticated side panel that slides in.
-
     const { aiModal, closeAIModal, openAIModal } = useStore();
     const [isCopied, setIsCopied] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [activeTab, setActiveTab] = useState(aiModal.type || 'summarize');
 
-    // If we want this to handle the *request* too, we can add logic. 
-    // But currently, AITools triggers the request. 
-    // Let's assume this panel *displays* the result of aiModal.
-
-    // We can also make it smart: if aiModal.type is set but data is null, it loads?
-    // Or simpler: Just display data passed in aiModal.data
+    // Sync internal tab with external store updates
+    useEffect(() => {
+        if (aiModal.type) {
+            setActiveTab(aiModal.type);
+        }
+    }, [aiModal.type]);
 
     if (!aiModal.isOpen) return null;
 
@@ -38,96 +35,137 @@ export const AIPanel = () => {
         setTimeout(() => setIsCopied(false), 2000);
     };
 
+    const tabs = [
+        { id: 'summarize', label: 'Summary', icon: FileText },
+        { id: 'rewrite', label: 'Rewrite', icon: PenTool },
+        { id: 'stickynote', label: 'Sticky', icon: StickyNote },
+    ];
+
+    const handleTabChange = (id) => {
+        setActiveTab(id);
+        // In a real app, this might trigger a new context or clearer state
+        // For now, we just switch the view, but if data doesn't match, we might show empty
+        if (aiModal.type !== id) {
+            // If switching tabs, we ideally want to trigger that mode. 
+            // But simpler is to just let user browse.
+            // We won't clear data to allow switching back.
+        }
+    };
+
     return (
-        <div className="fixed inset-y-0 right-0 w-96 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-[60] border-l border-gray-100 flex flex-col">
-            {/* Header */}
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-purple-50 to-white">
-                <div className="flex items-center gap-2 text-purple-700 font-bold">
-                    <Sparkles size={20} />
-                    <span>AI Assistant</span>
-                </div>
-                <button
-                    onClick={closeAIModal}
-                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
-                >
-                    <X size={20} />
-                </button>
-            </div>
+        <>
+            {/* Backdrop for click-outside */}
+            <div
+                className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[55] transition-opacity"
+                onClick={closeAIModal}
+            />
 
-            {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-5">
-                {error ? (
-                    <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-start gap-3">
-                        <AlertCircle className="mt-0.5" size={18} />
-                        <div className="text-sm">
-                            <p className="font-semibold">Something went wrong</p>
-                            <p className="mt-1 opacity-90">{error}</p>
+            {/* Slide-in Panel */}
+            <div className="fixed inset-y-0 right-0 z-[60] flex">
+                <div className="w-96 h-full bg-white shadow-2xl shadow-indigo-900/20 flex flex-col animate-slideInRight">
+
+                    {/* Header */}
+                    <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white relative">
+                        <div className="flex items-center gap-2.5 text-indigo-600 font-bold text-lg">
+                            <div className="p-2 bg-indigo-50 rounded-lg">
+                                <Sparkles size={20} />
+                            </div>
+                            <span>Flowspace AI</span>
                         </div>
+                        <IconButton
+                            icon={X}
+                            onClick={closeAIModal}
+                            variant="ghost"
+                            size="sm"
+                        />
                     </div>
-                ) : (
-                    <div className="space-y-4 animate-fadeIn">
-                        <div className="flex items-center gap-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                            Result: {aiModal.type}
-                        </div>
 
-                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-700 leading-relaxed text-sm whitespace-pre-wrap">
-                            {/* Render content based on structure */}
-                            {typeof aiModal.data === 'string' && aiModal.data}
-                            {aiModal.data?.summary && aiModal.data.summary}
-                            {aiModal.data?.rewritten && aiModal.data.rewritten}
-                            {aiModal.data?.content && (
-                                <div className="space-y-2">
-                                    <div className="bg-yellow-100 p-3 shadow-sm rotate-1 text-gray-800 font-handwriting">
-                                        {aiModal.data.content.text}
-                                    </div>
-                                    <div className="text-xs text-gray-400 text-right">
-                                        Confidence: {Math.round((aiModal.data.content.confidence || 0) * 100)}%
-                                    </div>
-                                </div>
-                            )}
+                    {/* Tabs */}
+                    <div className="flex border-b border-slate-100 px-2 pt-2 gap-1 bg-slate-50/50">
+                        {tabs.map(t => (
+                            <button
+                                key={t.id}
+                                onClick={() => handleTabChange(t.id)}
+                                className={clsx(
+                                    "flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium border-b-2 transition-all",
+                                    activeTab === t.id
+                                        ? "border-indigo-600 text-indigo-700 bg-gradient-to-t from-indigo-50/50 to-transparent"
+                                        : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                                )}
+                            >
+                                <t.icon size={16} />
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
 
-                            {!aiModal.data && (
-                                <div className="flex flex-col items-center justify-center h-32 text-gray-400">
-                                    <RefreshCw className="animate-spin mb-2" />
-                                    <span>Processing...</span>
-                                </div>
-                            )}
-                        </div>
+                    {/* Content Area */}
+                    <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30">
 
-                        {/* Actions */}
+                        {/* Loading State? */}
+                        {!aiModal.data && (
+                            <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
+                                <RefreshCw className="animate-spin text-indigo-500" size={32} />
+                                <span className="text-sm font-medium animate-pulse">Generating insights...</span>
+                            </div>
+                        )}
+
+                        {/* Data Display */}
                         {aiModal.data && (
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={handleCopy}
-                                    className={clsx(
-                                        "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all",
-                                        isCopied ? "bg-green-100 text-green-700" : "bg-gray-900 text-white hover:bg-black"
-                                    )}
-                                >
-                                    {isCopied ? (
+                            <div className="space-y-6">
+                                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 leading-relaxed text-slate-700 text-sm whitespace-pre-wrap">
+                                    {/* Handle different data shapes based on activeTab logic or just raw data */}
+                                    {/* We display raw data if it matches current type, else show placeholder */}
+
+                                    {(aiModal.type === activeTab || !aiModal.type) ? (
                                         <>
-                                            <Check size={16} /> Copied
+                                            {typeof aiModal.data === 'string' && aiModal.data}
+                                            {aiModal.data?.summary && aiModal.data.summary}
+                                            {aiModal.data?.rewritten && aiModal.data.rewritten}
+                                            {aiModal.data?.content && (
+                                                <div className="space-y-3">
+                                                    <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-lg shadow-sm text-slate-800 font-handwriting rotate-1">
+                                                        {aiModal.data.content.text}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </>
                                     ) : (
-                                        <>
-                                            <Copy size={16} /> Copy to Clipboard
-                                        </>
+                                        <div className="text-center py-8 text-slate-400 italic">
+                                            Select content on the board and click {tabs.find(t => t.id === activeTab)?.label} to generate.
+                                        </div>
                                     )}
-                                </button>
+                                </div>
 
-                                <button className="p-2.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors" title="Regenerate (Mock)">
-                                    <RefreshCw size={18} />
-                                </button>
+                                {/* Actions */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Button
+                                        onClick={handleCopy}
+                                        variant={isCopied ? "subtle" : "solid"}
+                                        iconLeft={isCopied ? Check : Copy}
+                                        className="w-full"
+                                    >
+                                        {isCopied ? "Copied" : "Copy"}
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        iconLeft={RefreshCw}
+                                        className="w-full"
+                                        title="Regenerate"
+                                    >
+                                        Regenerate
+                                    </Button>
+                                </div>
                             </div>
                         )}
                     </div>
-                )}
-            </div>
 
-            {/* Footer / Context */}
-            <div className="p-4 border-t border-gray-100 text-xs text-center text-gray-400 bg-gray-50/50">
-                AI can make mistakes. Review generated content.
+                    {/* Footer */}
+                    <div className="p-4 border-t border-slate-100 text-[10px] text-center text-slate-400 bg-white">
+                        AI generated content may be inaccurate. Review before using.
+                    </div>
+                </div>
             </div>
-        </div>
+        </>
     );
 };
