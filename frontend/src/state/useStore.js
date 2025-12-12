@@ -14,12 +14,13 @@ export const useStore = create(
             isBoardLoading: true,
             layoutAnimation: null, // Holds { [id]: {x, y} }
 
+            selectedObjectIds: [], // Currently selected element IDs
+
             strokes: [],
             undoStack: [], // We only track Ids or full snapshots locally? 
             // Note: Our backend handles authoritative undo/redo. 
             // Local stack is nice for optimistic UI, but complex to keep in sync.
             // We'll rely on server events for the main stack, 
-            // but can maintain basic history here if needed.
             redoStack: [],
 
             cursors: {}, // userId -> {x, y, color}
@@ -38,6 +39,19 @@ export const useStore = create(
             setIsDrawing: (isDrawing) => set({ isDrawing }),
             setIsBoardLoading: (isLoading) => set({ isBoardLoading: isLoading }),
             setLayoutAnimation: (data) => set({ layoutAnimation: data }),
+
+            // Selection Actions
+            selectOne: (id) => set({ selectedObjectIds: [id] }),
+            selectMultiple: (ids) => set({ selectedObjectIds: ids }),
+            toggleSelection: (id) => set((state) => {
+                const isSelected = state.selectedObjectIds.includes(id);
+                return {
+                    selectedObjectIds: isSelected
+                        ? state.selectedObjectIds.filter(sid => sid !== id)
+                        : [...state.selectedObjectIds, id]
+                };
+            }),
+            clearSelection: () => set({ selectedObjectIds: [] }),
 
             setActiveBoardId: (id) => set({ activeBoardId: id }),
 

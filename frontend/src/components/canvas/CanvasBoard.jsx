@@ -5,6 +5,9 @@ import { nanoid } from 'nanoid';
 // import { useSocketEvents } from '../../hooks/useSocket'; // Handled globally in App now
 import throttle from 'lodash/throttle';
 import Konva from 'konva';
+import { useSelectionBehavior } from '../../hooks/useSelectionBehavior';
+import { TransformerComponent } from './TransformerComponent';
+import { TOOLS } from '../../utils/constants';
 
 // Optimized Stroke Component
 const Stroke = React.memo(({ stroke }) => (
@@ -58,14 +61,31 @@ export const CanvasBoard = () => {
         }, 100)
     ).current;
 
+    // Selection Hook
+    const { selectionHandlers, selectionBox } = useSelectionBehavior(stageRef);
 
     const handleMouseDown = useCallback((e) => {
+        // Handle Selection Logic First if in SELECT mode
+        if (tool === TOOLS.SELECT) {
+            selectionHandlers.onMouseDown(e);
+            return;
+        }
+
         isDrawing.current = true;
         const pos = e.target.getStage().getPointerPosition();
         setCurrentPoints([pos.x, pos.y]);
-    }, []);
+    }, [tool, selectionHandlers]);
 
     const handleMouseMove = useCallback((e) => {
+        if (tool === TOOLS.SELECT) {
+            selectionHandlers.onMouseMove(e);
+            // Also emit cursor
+            const stage = e.target.getStage();
+            const point = stage.getPointerPosition();
+            throttledEmitCursor(activeBoardId, point.x, point.y);
+            return;
+        }
+
         const stage = e.target.getStage();
         const point = stage.getPointerPosition();
 
@@ -75,9 +95,14 @@ export const CanvasBoard = () => {
         if (!isDrawing.current) return;
 
         setCurrentPoints(prev => prev.concat([point.x, point.y]));
-    }, [activeBoardId, throttledEmitCursor]);
+    }, [activeBoardId, throttledEmitCursor, tool, selectionHandlers]);
 
     const handleMouseUp = useCallback(() => {
+        if (tool === TOOLS.SELECT) {
+            selectionHandlers.onMouseUp();
+            return;
+        }
+
         if (!isDrawing.current) return;
         isDrawing.current = false;
 
@@ -94,7 +119,7 @@ export const CanvasBoard = () => {
             }
             return [];
         });
-    }, [tool, color, strokeWidth, addStroke]);
+    }, [tool, color, strokeWidth, addStroke, selectionHandlers]);
 
     // Handle Layout Animations
     useEffect(() => {
@@ -280,6 +305,23 @@ export const CanvasBoard = () => {
                             perfectDrawEnabled={false}
                         />
                     )}
+
+                    {/* Marquee Selection Box */}
+                    {selectionBox && (
+                        <Konva.Rect
+                            x={selectionBox.x}
+                            y={selectionBox.y}
+                            width={selectionBox.width}
+                            height={selectionBox.height}
+                            fill="rgba(0, 161, 255, 0.3)"
+                            stroke="#00A1FF"
+                            strokeWidth={1}
+                            listening={false}
+                        />
+                    )}
+
+                    {/* Selection Handles */}
+                    <TransformerComponent />
                 </Layer>
             </Stage>
         </div>
