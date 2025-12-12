@@ -138,6 +138,25 @@ export const setupSocketHandlers = (io) => {
             }
         });
 
+        // Structural Updates (Lock, Group, Z-Index)
+        const handleStructuralUpdate = async (event, roomId, updates) => {
+            try {
+                if (!roomId || !updates) return;
+                // Apply updates to persistence
+                await boardService.updateElements(roomId, updates);
+                // Broadcast to others
+                socket.to(roomId).emit(event, updates);
+            } catch (error) {
+                logger.error(`Error in ${event}:`, error);
+            }
+        };
+
+        socket.on('object-lock', ({ roomId, updates }) => handleStructuralUpdate('object-lock', roomId, updates));
+        socket.on('object-unlock', ({ roomId, updates }) => handleStructuralUpdate('object-unlock', roomId, updates));
+        socket.on('object-group', ({ roomId, updates }) => handleStructuralUpdate('object-group', roomId, updates));
+        socket.on('object-ungroup', ({ roomId, updates }) => handleStructuralUpdate('object-ungroup', roomId, updates));
+        socket.on('zindex-update', ({ roomId, updates }) => handleStructuralUpdate('zindex-update', roomId, updates));
+
         // Disconnect logic with Roster cleaning
         socket.on('disconnecting', () => {
             for (const room of socket.rooms) {

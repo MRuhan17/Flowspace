@@ -31,32 +31,25 @@ class BoardService {
         board.elements = board.elements.map(el => {
             if (updates[el.id]) {
                 changed = true;
-                const { x, y } = updates[el.id];
+                const updateData = updates[el.id];
+                const { x, y, ...otherProps } = updateData;
 
-                // Handle Strokes (Points)
-                if (el.points && Array.isArray(el.points)) {
-                    // Start of stroke is 0,0 usually? If points are relative.
-                    // But here we likely treat points as absolute. 
-                    // Delta X/Y implies shifting all points.
-                    // NOTE: This logic assumes 'x, y' are DELTAS in this context 
-                    // (Toolbar usually logic sends delta or absolute?).
-                    // Let's assume Delta for consistency with previous implementation.
-                    const newPoints = el.points.map((val, i) => i % 2 === 0 ? val + x : val + y);
-                    return { ...el, points: newPoints };
+                let updatedEl = { ...el, ...otherProps };
+
+                // Handle Spatial Updates (Deltas)
+                if (typeof x === 'number' || typeof y === 'number') {
+                    const dx = x || 0;
+                    const dy = y || 0;
+
+                    if (updatedEl.points && Array.isArray(updatedEl.points)) {
+                        const newPoints = updatedEl.points.map((val, i) => i % 2 === 0 ? val + dx : val + dy);
+                        updatedEl.points = newPoints;
+                    } else if (typeof updatedEl.x === 'number' && typeof updatedEl.y === 'number') {
+                        updatedEl.x += dx;
+                        updatedEl.y += dy;
+                    }
                 }
-                // Handle Nodes (x, y properties)
-                else if (typeof el.x === 'number' && typeof el.y === 'number') {
-                    // For Nodes, 'x' and 'y' in updates might be Absolute or Delta?
-                    // Usually layout updates are Absolute positions or Deltas. 
-                    // If flow engine sends absolute, this should set absolute.
-                    // But previous stroke logic did `val + x`, implying Delta.
-                    // Ref: `CanvasBoard` `handleDragEnd` sends `delta` for strokes.
-                    // For `updateNode` in useFlowEngine, we set `x,y`. 
-                    // Let's assume updates for Nodes are usually ABSOLUTE from flow engine?
-                    // Wait, `socketHandlers` 'layout-update' says "updates: { [id]: { x, y } } - Deltas".
-                    // So we stick to DELTA.
-                    return { ...el, x: el.x + x, y: el.y + y };
-                }
+                return updatedEl;
             }
             return el;
         });
