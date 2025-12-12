@@ -1,6 +1,7 @@
 import { boardService } from '../services/boardService.js';
 import { logger } from '../utils/logger.js';
 import { registerTextHandlers } from './textHandlers.js';
+import { crdtStateManager } from '../crdt/crdtState.js';
 
 // In-memory presence roster: Map<roomId, Set<userId>>
 const roomUsers = new Map();
@@ -25,9 +26,32 @@ export const setupSocketHandlers = (io) => {
             }
             roomUsers.get(roomId).add(socket.id);
 
-            // Fetch board state
-            const elements = await boardService.getBoardState(roomId);
-            socket.emit('board-init', { elements });
+            // Fetch board state (try CRDT first, fallback to boardService)
+            try {
+                const crdtElements = crdtStateManager.getElements(roomId);
+                if (crdtElements.length > 0) {
+                    socket.emit('board-init', { elements: crdtElements });
+                } else {
+                    // Fallback to traditional board service
+                    const elements = await boardService.getBoardState(roomId);
+                    socket.emit('board-init', { elements });
+
+                    // Initialize CRDT with existing data
+                    elements.forEach(el => {
+                        crdtStateManager.applyOperation(roomId, {
+                            id: `init-${el.id}`,
+                            type: 'insert',
+                            elementId: el.id,
+                            data: el,
+                            timestamp: Date.now(),
+                            clientId: 'server'
+                        });
+                    });
+                }
+            } catch (error) {
+                logger.error('Error loading board state:', error);
+                socket.emit('board-init', { elements: [] });
+            }
 
             // Broadcast join to others
             socket.to(roomId).emit('presence-join', { userId: socket.id });
@@ -35,6 +59,32 @@ export const setupSocketHandlers = (io) => {
             // Send current roster to the new user
             const users = Array.from(roomUsers.get(roomId));
             socket.emit('presence-roster', { users });
+        });
+
+        // CRDT Operation Handler
+        socket.on('crdt-operation', async ({ roomId, operation }) => {
+            try {
+                if (!roomId || !operation) return;
+
+                // Apply operation to CRDT state
+                const applied = crdtStateManager.applyOperation(roomId, operation);
+
+                if (applied) {
+                    // Broadcast to other clients in the room
+                    socket.to(roomId).emit('crdt-operation', operation);
+
+                    // Periodic snapshot to persistence
+                    if (crdtStateManager.shouldSnapshot(roomId)) {
+                        const snapshot = crdtStateManager.dumpSnapshot(roomId);
+                        // Persist snapshot asynchronously (don't block)
+                        boardService.saveCRDTSnapshot(roomId, snapshot).catch(err => {
+                            logger.error('Failed to save CRDT snapshot:', err);
+                        });
+                    }
+                }
+            } catch (error) {
+                logger.error('Error handling CRDT operation:', error);
+            }
         });
 
         // Draw Stroke (Idempotent addition/update)

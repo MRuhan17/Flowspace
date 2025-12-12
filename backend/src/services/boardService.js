@@ -191,6 +191,39 @@ class BoardService {
 
         return [];
     }
+
+    /**
+     * Save CRDT snapshot to persistence
+     * @param {string} roomId 
+     * @param {object} snapshot - CRDT snapshot data
+     */
+    async saveCRDTSnapshot(roomId, snapshot) {
+        try {
+            await persistenceService.saveCRDTSnapshot(roomId, snapshot);
+            logger.info(`Saved CRDT snapshot for room ${roomId}`);
+        } catch (error) {
+            logger.error(`Failed to save CRDT snapshot for room ${roomId}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Load CRDT snapshot from persistence
+     * @param {string} roomId 
+     * @returns {object|null} CRDT snapshot or null
+     */
+    async loadCRDTSnapshot(roomId) {
+        try {
+            const snapshot = await persistenceService.loadCRDTSnapshot(roomId);
+            if (snapshot) {
+                logger.info(`Loaded CRDT snapshot for room ${roomId}`);
+            }
+            return snapshot;
+        } catch (error) {
+            logger.error(`Failed to load CRDT snapshot for room ${roomId}:`, error);
+            return null;
+        }
+    }
 }
 
 export const boardService = new BoardService();
