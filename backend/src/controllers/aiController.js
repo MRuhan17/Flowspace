@@ -7,6 +7,9 @@ import { generateTheme, applyThemeToBoard } from '../ai/themeGenerator.js';
 import { analyzeBoard as interpretBoard, quickAnalyze } from '../ai/boardInterpreter.js';
 import { generateWorkflow, simplifyWorkflow, optimizeWorkflow, expandWorkflow, convertToFlowchart, convertToTimeline } from '../ai/workflowAssistant.js';
 import { validateDiagram, quickValidate } from '../ai/diagramValidator.js';
+import { storeMemory, retrieveMemories, generateContext, getAllMemories, deleteMemory, clearMemories, getMemoryStatistics, autoStoreFromSummary } from '../ai/memory.js';
+import { layoutAdvisor, quickLayoutRecommendation, getLayoutOptions } from '../ai/layoutAdvisor.js';
+import { generateColorPalette, quickColorPalette, generatePaletteFromColor } from '../ai/colorSuggest.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 
@@ -374,6 +377,305 @@ export const quickBoardSummary = async (req, res, next) => {
         res.json({
             success: true,
             data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Store a memory for a board
+ */
+export const storeBoardMemory = async (req, res, next) => {
+    try {
+        const { boardId, memoryData } = req.body;
+        if (!boardId || !memoryData) {
+            throw new AppError('Board ID and memory data are required', 400);
+        }
+
+        const memory = await storeMemory(boardId, memoryData);
+
+        res.json({
+            success: true,
+            data: memory
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Retrieve relevant memories for a query
+ */
+export const retrieveBoardMemories = async (req, res, next) => {
+    try {
+        const { boardId, query, topK } = req.body;
+        if (!boardId || !query) {
+            throw new AppError('Board ID and query are required', 400);
+        }
+
+        const memories = await retrieveMemories(boardId, query, topK);
+
+        res.json({
+            success: true,
+            data: memories
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Generate context from memories
+ */
+export const generateMemoryContext = async (req, res, next) => {
+    try {
+        const { boardId, query, topK } = req.body;
+        if (!boardId || !query) {
+            throw new AppError('Board ID and query are required', 400);
+        }
+
+        const context = await generateContext(boardId, query, topK);
+
+        res.json({
+            success: true,
+            data: { context }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get all memories for a board
+ */
+export const getBoardMemories = async (req, res, next) => {
+    try {
+        const { boardId } = req.params;
+        if (!boardId) {
+            throw new AppError('Board ID is required', 400);
+        }
+
+        const memories = await getAllMemories(boardId);
+
+        res.json({
+            success: true,
+            data: memories
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Delete a specific memory
+ */
+export const deleteBoardMemory = async (req, res, next) => {
+    try {
+        const { boardId, memoryId } = req.params;
+        if (!boardId || !memoryId) {
+            throw new AppError('Board ID and memory ID are required', 400);
+        }
+
+        const success = await deleteMemory(boardId, memoryId);
+
+        res.json({
+            success: success,
+            message: success ? 'Memory deleted' : 'Memory not found'
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Clear all memories for a board
+ */
+export const clearBoardMemories = async (req, res, next) => {
+    try {
+        const { boardId } = req.params;
+        if (!boardId) {
+            throw new AppError('Board ID is required', 400);
+        }
+
+        await clearMemories(boardId);
+
+        res.json({
+            success: true,
+            message: 'All memories cleared'
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get memory statistics
+ */
+export const getBoardMemoryStats = async (req, res, next) => {
+    try {
+        const { boardId } = req.params;
+        if (!boardId) {
+            throw new AppError('Board ID is required', 400);
+        }
+
+        const stats = await getMemoryStatistics(boardId);
+
+        res.json({
+            success: true,
+            data: stats
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Auto-store memory from summary
+ */
+export const autoStoreSummaryMemory = async (req, res, next) => {
+    try {
+        const { boardId, summary } = req.body;
+        if (!boardId || !summary) {
+            throw new AppError('Board ID and summary are required', 400);
+        }
+
+        const memory = await autoStoreFromSummary(boardId, summary);
+
+        res.json({
+            success: true,
+            data: memory
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get layout recommendation for a board
+ */
+export const getLayoutRecommendation = async (req, res, next) => {
+    try {
+        const { boardSemanticMap, options } = req.body;
+        if (!boardSemanticMap) {
+            throw new AppError('Board semantic map is required', 400);
+        }
+
+        const recommendation = await layoutAdvisor(boardSemanticMap, options);
+
+        res.json({
+            success: true,
+            data: recommendation
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get quick layout recommendation (heuristic only)
+ */
+export const getQuickLayoutRecommendation = async (req, res, next) => {
+    try {
+        const { boardSemanticMap } = req.body;
+        if (!boardSemanticMap) {
+            throw new AppError('Board semantic map is required', 400);
+        }
+
+        const recommendation = await quickLayoutRecommendation(boardSemanticMap);
+
+        res.json({
+            success: true,
+            data: recommendation
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get multiple layout options
+ */
+export const getMultipleLayoutOptions = async (req, res, next) => {
+    try {
+        const { boardSemanticMap } = req.body;
+        if (!boardSemanticMap) {
+            throw new AppError('Board semantic map is required', 400);
+        }
+
+        const options = await getLayoutOptions(boardSemanticMap);
+
+        res.json({
+            success: true,
+            data: options
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Generate color palette for a board
+ */
+export const getColorPalette = async (req, res, next) => {
+    try {
+        const { boardSemanticMap, options } = req.body;
+        if (!boardSemanticMap) {
+            throw new AppError('Board semantic map is required', 400);
+        }
+
+        const palette = await generateColorPalette(boardSemanticMap, options);
+
+        res.json({
+            success: true,
+            data: palette
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get quick color palette (color theory only)
+ */
+export const getQuickColorPalette = async (req, res, next) => {
+    try {
+        const { boardSemanticMap, mood } = req.body;
+        if (!boardSemanticMap) {
+            throw new AppError('Board semantic map is required', 400);
+        }
+
+        const palette = await quickColorPalette(boardSemanticMap, mood);
+
+        res.json({
+            success: true,
+            data: palette
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Generate palette from a specific color
+ */
+export const getPaletteFromColor = async (req, res, next) => {
+    try {
+        const { baseColor, mood } = req.body;
+        if (!baseColor) {
+            throw new AppError('Base color is required', 400);
+        }
+
+        // Validate hex color
+        if (!baseColor.match(/^#[0-9A-Fa-f]{6}$/)) {
+            throw new AppError('Invalid hex color format. Use #RRGGBB', 400);
+        }
+
+        const palette = generatePaletteFromColor(baseColor, mood);
+
+        res.json({
+            success: true,
+            data: palette
         });
     } catch (error) {
         next(error);

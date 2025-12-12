@@ -1,8 +1,10 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { logger } from '../utils/logger.js';
 
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+// Initialize OpenAI
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY || 'dummy_key'
+});
 
 /**
  * Enhanced Board Summarization - Multi-layer comprehensive summaries
@@ -142,23 +144,26 @@ function extractBoardContext(boardData) {
  * Generate multi-layer summary using LLM
  */
 async function generateMultiLayerSummary(context, detailLevel) {
-    if (!process.env.GEMINI_API_KEY) {
-        logger.warn('GEMINI_API_KEY not found, using fallback summary');
+    if (!process.env.OPENAI_API_KEY) {
+        logger.warn('OPENAI_API_KEY not found, using fallback summary');
         return generateBasicSummary(context);
     }
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
     const prompt = buildSummaryPrompt(context, detailLevel);
 
     try {
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+                { role: 'system', content: 'You are an expert at analyzing collaborative whiteboards and creating comprehensive summaries. Always return valid JSON.' },
+                { role: 'user', content: prompt }
+            ],
+            temperature: 0.7,
+            response_format: { type: 'json_object' }
+        });
 
-        // Clean and parse JSON
-        const jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        return JSON.parse(jsonText);
+        const text = response.choices[0].message.content;
+        return JSON.parse(text);
 
     } catch (error) {
         logger.error('LLM Summary Generation Error:', error);

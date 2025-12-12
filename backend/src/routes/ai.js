@@ -25,8 +25,25 @@ router.post('/validate', aiController.validateBoardDiagram);
 router.post('/validate/quick', aiController.quickValidateDiagram);
 router.post('/summary/enhanced', aiController.summarizeBoardEnhanced);
 router.post('/summary/quick', aiController.quickBoardSummary);
+router.post('/memory/store', aiController.storeBoardMemory);
+router.post('/memory/retrieve', aiController.retrieveBoardMemories);
+router.post('/memory/context', aiController.generateMemoryContext);
+router.get('/memory/:boardId', aiController.getBoardMemories);
+router.delete('/memory/:boardId/:memoryId', aiController.deleteBoardMemory);
+router.delete('/memory/:boardId', aiController.clearBoardMemories);
+router.get('/memory/:boardId/stats', aiController.getBoardMemoryStats);
+router.post('/memory/auto-store', aiController.autoStoreSummaryMemory);
+router.post('/layout/recommend', aiController.getLayoutRecommendation);
+router.post('/layout/recommend/quick', aiController.getQuickLayoutRecommendation);
+router.post('/layout/options', aiController.getMultipleLayoutOptions);
+router.post('/color/generate', aiController.getColorPalette);
+router.post('/color/generate/quick', aiController.getQuickColorPalette);
+router.post('/color/from-color', aiController.getPaletteFromColor);
 
 export default router;
+
+
+
 
 
 
