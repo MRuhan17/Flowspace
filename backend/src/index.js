@@ -8,6 +8,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import aiRoutes from './routes/ai.js';
 import layoutRoutes from './routes/layout.js';
 import { setupSocketHandlers } from './socket/socketHandlers.js';
+import { setupTextHandlers } from './socket/textHandlers.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -43,8 +44,9 @@ app.use('/api/layout', layoutRoutes);
 // Error Handling
 app.use(errorHandler);
 
-// Socket.IO Logic (includes room joining & per-board state)
+// Socket.IO Logic
 setupSocketHandlers(io);
+setupTextHandlers(io);
 
 // Start Server
 server.listen(config.port, () => {
