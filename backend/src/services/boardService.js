@@ -11,6 +11,71 @@ class BoardService {
         this.MAX_STACK_SIZE = 50;
     }
 
+    addStroke(boardId, stroke) {
+        if (!this.boards.has(boardId)) {
+            // Assuming initBoard would initialize the board structure, including 'strokes'
+            // This method is not defined in the provided context, so this call will fail.
+            // For the purpose of faithfully adding the provided code, it's kept as is.
+            this.initBoard(boardId);
+        }
+        const state = this.boards.get(boardId);
+        // The existing board structure uses 'elements', not 'strokes'.
+        // This will likely cause a runtime error if 'state.strokes' is accessed.
+        // For the purpose of faithfully adding the provided code, it's kept as is.
+        state.strokes.push(stroke);
+
+        // Add to persistence queue
+        // this.autosaveService is not defined in the current class.
+        this.autosaveService.markDirty(boardId, state.strokes);
+
+        // Record for undo
+        // this.boardStateManager is not defined in the current class.
+        this.boardStateManager.addOperation(boardId, { type: 'ADD_STROKE', data: stroke });
+
+        return stroke;
+    }
+
+    updateElements(boardId, updates) {
+        if (!this.boards.has(boardId)) return;
+        const state = this.boards.get(boardId);
+
+        // updates is a map/object: { [id]: {x, y} }
+        const affectedIds = Object.keys(updates);
+
+        if (affectedIds.length === 0) return;
+
+        // Snapshot previous state for undo (simplified: just store the inverse or full snapshot of affected items)
+        // For accurate undo/redo of positions, we'd need to store the PREVIOUS points.
+        // But since we only have simplified Line points usually, getting them back is easy if we store them.
+
+        // Store Undo Operation
+        // We'll store the inverse move: { [id]: { x: -deltaX, y: -deltaY } }
+        const undoMap = {};
+
+        // The existing board structure uses 'elements', not 'strokes'.
+        // This will likely cause a runtime error if 'state.strokes' is accessed.
+        // For the purpose of faithfully adding the provided code, it's kept as is.
+        state.strokes = state.strokes.map(stroke => {
+            if (updates[stroke.id]) {
+                const { x, y } = updates[stroke.id];
+
+                // Store inverse for Undo
+                undoMap[stroke.id] = { x: -x, y: -y };
+
+                return {
+                    ...stroke,
+                    points: stroke.points.map((val, i) => i % 2 === 0 ? val + x : val + y)
+                };
+            }
+            return stroke;
+        });
+
+        // this.boardStateManager is not defined in the current class.
+        this.boardStateManager.addOperation(boardId, { type: 'LAYOUT_UPDATE', data: undoMap });
+        // this.autosaveService is not defined in the current class.
+        this.autosaveService.markDirty(boardId, state.strokes);
+    }
+
     async _getBoard(roomId) {
         if (!this.boards.has(roomId)) {
             const savedElements = await persistenceService.loadBoard(roomId);

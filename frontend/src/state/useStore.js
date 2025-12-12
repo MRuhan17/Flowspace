@@ -12,6 +12,7 @@ export const useStore = create(
             brushSize: 5,
             isDrawing: false,
             isBoardLoading: true,
+            layoutAnimation: null, // Holds { [id]: {x, y} }
 
             strokes: [],
             undoStack: [], // We only track Ids or full snapshots locally? 
@@ -36,6 +37,7 @@ export const useStore = create(
             setBrushSize: (size) => set({ brushSize: size }),
             setIsDrawing: (isDrawing) => set({ isDrawing }),
             setIsBoardLoading: (isLoading) => set({ isBoardLoading: isLoading }),
+            setLayoutAnimation: (data) => set({ layoutAnimation: data }),
 
             setActiveBoardId: (id) => set({ activeBoardId: id }),
 

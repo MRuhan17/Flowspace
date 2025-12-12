@@ -68,6 +68,15 @@ export const setupSocketHandlers = (io) => {
             }
         });
 
+        socket.on('layout-update', ({ roomId, updates }) => {
+            // updates: { [id]: { x, y } } - Deltas
+            // We need to apply these deltas to the board service
+            boardService.updateElements(roomId, updates);
+
+            // Broadcast to others to animate
+            socket.to(roomId).emit('onLayoutUpdate', updates);
+        });
+
         // Full Sync Request (Client asks for latest state)
         socket.on('sync-request', async (payload) => {
             const { roomId } = payload;

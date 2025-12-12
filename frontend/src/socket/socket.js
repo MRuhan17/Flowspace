@@ -68,8 +68,13 @@ class FlowspaceSocket {
 
     sendCursor(roomId, x, y) {
         if (!this.socket) return;
-        // We can batch this internally if needed, or rely on throttle in component
-        this.socket.emit("cursor-move", { roomId, x, y });
+        // Optimization: Don't allow cursor emits if unconnected
+        this.socket.emit('cursor-move', { roomId, x, y });
+    }
+
+    sendLayoutUpdate(roomId, layoutData) {
+        if (!this.socket) return;
+        this.socket.emit('layout-update', { roomId, updates: layoutData });
     }
 
     sendSyncRequest(roomId) {

@@ -13,6 +13,7 @@ export const useSocketListeners = () => {
     const updateCursor = useStore((state) => state.updateCursor);
     const activeBoardId = useStore((state) => state.activeBoardId);
     const setIsBoardLoading = useStore((state) => state.setIsBoardLoading);
+    const setLayoutAnimation = useStore((state) => state.setLayoutAnimation); // New store value for triggering animation
 
     useEffect(() => {
         // Connect and join room
@@ -43,11 +44,18 @@ export const useSocketListeners = () => {
             updateCursor(data.userId, { x: data.x, y: data.y });
         };
 
+        const handleLayoutUpdate = (layoutData) => {
+            // layoutData: { [id]: { x, y } }
+            // Instead of immediate update, we set a flag/data in store that CanvasBoard consumes to animate
+            setLayoutAnimation(layoutData);
+        };
+
         // Subscriptions
         const unsubInit = socketService.on('onInit', handleInit);
         const unsubSync = socketService.on('onSync', handleSync);
         const unsubDraw = socketService.on('onDraw', handleDraw);
         const unsubCursor = socketService.on('onCursor', handleCursor);
+        const unsubLayout = socketService.on('onLayoutUpdate', handleLayoutUpdate);
 
         return () => {
             // Cleanup subscriptions
@@ -55,6 +63,7 @@ export const useSocketListeners = () => {
             unsubSync();
             unsubDraw();
             unsubCursor();
+            unsubLayout();
 
             // Optionally leave room? 
             // socketService.socket.emit('leave-room', activeBoardId);

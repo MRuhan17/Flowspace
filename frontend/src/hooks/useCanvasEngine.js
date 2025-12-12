@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { useStore } from '../state/useStore';
 import { nanoid } from 'nanoid';
 import throttle from 'lodash/throttle';
@@ -16,14 +16,10 @@ export const useCanvasEngine = () => {
         brushColor,
         brushSize,
         addStroke,
-        // We might access strokes here if we were doing imperative rendering
-        // but Konva handles rendering via props.
     } = useStore();
 
     const isDrawing = useRef(false);
     const [currentStroke, setCurrentStroke] = useState(null); // { points: [], color, size, tool }
-
-    // Throttled cursor emitter (if we wanted to move it here, but store handles it too)
 
     const startStroke = useCallback((x, y) => {
         isDrawing.current = true;
@@ -40,7 +36,6 @@ export const useCanvasEngine = () => {
 
         setCurrentStroke(prev => {
             if (!prev) return null;
-            // Simple line limit optimization could go here
             return {
                 ...prev,
                 points: [...prev.points, x, y]
@@ -54,11 +49,6 @@ export const useCanvasEngine = () => {
 
         setCurrentStroke(prev => {
             if (prev && prev.points.length > 2) {
-                // Determine if we need to smooth?
-                // For now, commit raw points. 
-                // Bezier smoothing is typically done at render time (Konva tension)
-                // or via a dedicated smoother algorithm before commit.
-
                 const finalStroke = {
                     id: nanoid(),
                     tool: prev.tool,
