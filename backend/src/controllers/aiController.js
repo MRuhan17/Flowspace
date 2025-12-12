@@ -10,6 +10,9 @@ import { validateDiagram, quickValidate } from '../ai/diagramValidator.js';
 import { storeMemory, retrieveMemories, generateContext, getAllMemories, deleteMemory, clearMemories, getMemoryStatistics, autoStoreFromSummary } from '../ai/memory.js';
 import { layoutAdvisor, quickLayoutRecommendation, getLayoutOptions } from '../ai/layoutAdvisor.js';
 import { generateColorPalette, quickColorPalette, generatePaletteFromColor } from '../ai/colorSuggest.js';
+import { storyExplain, quickStory, elevatorPitch, detailedNarrative } from '../ai/storyTeller.js';
+import { askBoard, batchAskBoard, quickAsk, suggestQuestions } from '../ai/query.js';
+import { generateSmartSuggestions, quickSuggestions, getHighPrioritySuggestions } from '../ai/smartSuggestions.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 
@@ -682,3 +685,234 @@ export const getPaletteFromColor = async (req, res, next) => {
     }
 };
 
+/**
+ * Generate story narrative from board
+ */
+export const generateBoardStory = async (req, res, next) => {
+    try {
+        const { boardSemanticMap, options } = req.body;
+        if (!boardSemanticMap) {
+            throw new AppError('Board semantic map is required', 400);
+        }
+
+        const story = await storyExplain(boardSemanticMap, options);
+
+        res.json({
+            success: true,
+            data: story
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get quick story (template-based)
+ */
+export const getQuickStory = async (req, res, next) => {
+    try {
+        const { boardSemanticMap, style } = req.body;
+        if (!boardSemanticMap) {
+            throw new AppError('Board semantic map is required', 400);
+        }
+
+        const story = await quickStory(boardSemanticMap, style);
+
+        res.json({
+            success: true,
+            data: story
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get elevator pitch only
+ */
+export const getElevatorPitch = async (req, res, next) => {
+    try {
+        const { boardSemanticMap, style } = req.body;
+        if (!boardSemanticMap) {
+            throw new AppError('Board semantic map is required', 400);
+        }
+
+        const pitch = await elevatorPitch(boardSemanticMap, style);
+
+        res.json({
+            success: true,
+            data: { pitch }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get detailed narrative only
+ */
+export const getDetailedNarrative = async (req, res, next) => {
+    try {
+        const { boardSemanticMap, style } = req.body;
+        if (!boardSemanticMap) {
+            throw new AppError('Board semantic map is required', 400);
+        }
+
+        const narrative = await detailedNarrative(boardSemanticMap, style);
+
+        res.json({
+            success: true,
+            data: { narrative }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Ask a question about the board
+ */
+export const askBoardQuestion = async (req, res, next) => {
+    try {
+        const { question, boardSemanticMap, options } = req.body;
+        if (!question || !boardSemanticMap) {
+            throw new AppError('Question and board semantic map are required', 400);
+        }
+
+        const answer = await askBoard(question, boardSemanticMap, options);
+
+        res.json({
+            success: true,
+            data: answer
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Ask multiple questions (batch)
+ */
+export const batchAskBoardQuestions = async (req, res, next) => {
+    try {
+        const { questions, boardSemanticMap, options } = req.body;
+        if (!questions || !Array.isArray(questions) || !boardSemanticMap) {
+            throw new AppError('Questions array and board semantic map are required', 400);
+        }
+
+        const answers = await batchAskBoard(questions, boardSemanticMap, options);
+
+        res.json({
+            success: true,
+            data: answers
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Quick answer (heuristic only)
+ */
+export const quickAskBoard = async (req, res, next) => {
+    try {
+        const { question, boardSemanticMap } = req.body;
+        if (!question || !boardSemanticMap) {
+            throw new AppError('Question and board semantic map are required', 400);
+        }
+
+        const answer = await quickAsk(question, boardSemanticMap);
+
+        res.json({
+            success: true,
+            data: answer
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get suggested questions for a board
+ */
+export const getSuggestedQuestions = async (req, res, next) => {
+    try {
+        const { boardSemanticMap } = req.body;
+        if (!boardSemanticMap) {
+            throw new AppError('Board semantic map is required', 400);
+        }
+
+        const suggestions = suggestQuestions(boardSemanticMap);
+
+        res.json({
+            success: true,
+            data: { suggestions }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+/**
+ * Generate smart suggestions for board
+ */
+export const getSmartSuggestions = async (req, res, next) => {
+    try {
+        const { boardSemanticMap, options } = req.body;
+        if (!boardSemanticMap) {
+            throw new AppError('Board semantic map is required', 400);
+        }
+
+        const suggestions = await generateSmartSuggestions(boardSemanticMap, options);
+
+        res.json({
+            success: true,
+            data: suggestions
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get quick suggestions (heuristic only)
+ */
+export const getQuickSuggestions = async (req, res, next) => {
+    try {
+        const { boardSemanticMap } = req.body;
+        if (!boardSemanticMap) {
+            throw new AppError('Board semantic map is required', 400);
+        }
+
+        const suggestions = await quickSuggestions(boardSemanticMap);
+
+        res.json({
+            success: true,
+            data: suggestions
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Get high priority suggestions only
+ */
+export const getHighPrioritySuggestionsOnly = async (req, res, next) => {
+    try {
+        const { boardSemanticMap } = req.body;
+        if (!boardSemanticMap) {
+            throw new AppError('Board semantic map is required', 400);
+        }
+
+        const suggestions = getHighPrioritySuggestions(boardSemanticMap);
+
+        res.json({
+            success: true,
+            data: suggestions
+        });
+    } catch (error) {
+        next(error);
+    }
+};

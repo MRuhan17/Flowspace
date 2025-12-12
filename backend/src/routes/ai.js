@@ -39,8 +39,22 @@ router.post('/layout/options', aiController.getMultipleLayoutOptions);
 router.post('/color/generate', aiController.getColorPalette);
 router.post('/color/generate/quick', aiController.getQuickColorPalette);
 router.post('/color/from-color', aiController.getPaletteFromColor);
+router.post('/story/generate', aiController.generateBoardStory);
+router.post('/story/quick', aiController.getQuickStory);
+router.post('/story/elevator-pitch', aiController.getElevatorPitch);
+router.post('/story/detailed', aiController.getDetailedNarrative);
+router.post('/query/ask', aiController.askBoardQuestion);
+router.post('/query/batch', aiController.batchAskBoardQuestions);
+router.post('/query/quick', aiController.quickAskBoard);
+router.post('/query/suggestions', aiController.getSuggestedQuestions);
+router.post('/suggestions/generate', aiController.getSmartSuggestions);
+router.post('/suggestions/quick', aiController.getQuickSuggestions);
+router.post('/suggestions/high-priority', aiController.getHighPrioritySuggestionsOnly);
 
 export default router;
+
+
+
 
 
 
