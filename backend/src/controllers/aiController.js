@@ -2,7 +2,28 @@ import { summarize } from '../ai/summarize.js';
 import { rewrite } from '../ai/rewrite.js';
 import { generateStickyNote } from '../ai/stickyNote.js';
 import { generateFlowchart } from '../ai/flowchart.js';
+import { processDesignQuery } from '../ai/designAssistant.js';
 import { AppError } from '../middleware/errorHandler.js';
+
+
+// ... existing functions ...
+
+
+export const handleDesignAssistant = async (req, res, next) => {
+    try {
+        const { mode, content, boardJSON } = req.body;
+        if (!mode || !content) throw new AppError('Mode and Content are required', 400);
+
+        const result = await processDesignQuery(mode, content, boardJSON);
+
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};
 
 export const summarizeText = async (req, res, next) => {
     try {
