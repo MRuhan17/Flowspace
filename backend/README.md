@@ -75,3 +75,6 @@ The current implementation is optimized for specific performance characteristics
 *   **Global Middleware**: `src/middleware/errorHandler.js` captures all async errors.
 *   **Operational vs Programmer Errors**: Custom `AppError` class distinguishes between expected client errors (400s) and system crashes (500s).
 *   **Graceful Shutdown**: Handles `unhandledRejection` to log before exit.
+
+
+<!-- Deployment: Triggering rebuild for Railway with express-rate-limit dependency -->
